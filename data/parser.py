@@ -55,11 +55,7 @@ class Parser(object):
         classes = tf.gather(classes, non_crowd_idx)
         boxes = tf.gather(boxes, non_crowd_idx)
         masks = tf.gather(masks, non_crowd_idx)
-<<<<<<< HEAD
-
-=======
         
->>>>>>> 936c600ceadb89e12b2b037be7e1ec0cc39526b7
         # resize mask
         masks = tf.cast(masks, tf.bool)
         masks = tf.cast(masks, tf.float32)
