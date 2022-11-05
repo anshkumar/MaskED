@@ -158,11 +158,18 @@ class MaskED(tf.keras.Model):
         pred.update(self.detect(pred))
 
         if self.config.PREDICT_MASK:
-            masks = self.mask_head(gt_boxes,
-                            features[:-2],
-                            self.num_classes,
-                            self.config,
-                            training)
+            if training:
+                masks = self.mask_head(gt_boxes,
+                                features[:-2],
+                                self.num_classes,
+                                self.config,
+                                training)
+            else:
+                masks = self.mask_head(pred['detection_boxes'],
+                                features[:-2],
+                                self.num_classes,
+                                self.config,
+                                training)
             pred.update({'detection_masks': masks})
 
         return pred
