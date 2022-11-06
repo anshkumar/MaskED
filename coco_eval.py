@@ -8,6 +8,7 @@ from protos import string_int_label_map_pb2
 import json
 from absl import app
 from absl import flags
+import time
 
 FLAGS = flags.FLAGS
 
@@ -115,7 +116,9 @@ def main(argv):
             image = cv2.resize(image_org, (512, 512))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image = image.astype(np.float32)
+            tic = time.time()
             output = infer(input_1=tf.constant(image[None, ...]))
+            print('fps: ', 1/(time.time()-tic))
 
             _h = image_org.shape[0]
             _w = image_org.shape[1]

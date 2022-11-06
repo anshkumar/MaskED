@@ -47,7 +47,7 @@ config = Config()
 model = Model(config)
 # model.call = call
 checkpoint = tf.train.Checkpoint(model=model)
-status = checkpoint.restore('checkpoints/ckpt-1')
+status = checkpoint.restore('checkpoints/ckpt-15')
 
 _ = model(tf.random.uniform(shape=[16,512,512,3], minval=0, maxval=255, dtype=tf.float32), training=False)
-model.save('test')
+model.save('saved_models')

@@ -107,8 +107,8 @@ class Config(object):
     WARMUP_LR = 0.0
     LEARNING_MOMENTUM = 0.9
     LR_SCHEDULE = False
-    TRAIN_ITER = 813340
-    LR_TOTAL_STEPS = 813340
+    TRAIN_ITER = 133092
+    LR_TOTAL_STEPS = 133092
 
     # Weight decay regularization
     WEIGHT_DECAY = 1e-4 # 5*1e-4
