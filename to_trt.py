@@ -29,8 +29,6 @@ def main(argv):
     
     # Define a generator function that yields input data, and use it to execute
     # the graph to build TRT engines.
-    with open(FLAGS.img_info) as f:
-        info = json.load(f)
 
     def my_input_fn():
         for name in glob.glob(os.path.join(FLAGS.calib_dir, '*.jpg')):
