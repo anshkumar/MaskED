@@ -17,7 +17,7 @@ class Config(object):
     #         resnet50
     BACKBONE = "efficientnetv2b0"
     BASE_MODEL_TRAINABLE = True
-    FREEZE_BACKBONE_BN = True
+    FREEZE_BACKBONE_BN = True # False for bbox training. True for fine-tuning mask.
 
     BATCH_SIZE = 16 # Batch size per GPU
     # (Height, Width, Channels)
@@ -60,6 +60,7 @@ class Config(object):
     MAX_OUTPUT_SIZE = 100
     PER_CLASS_MAX_OUTPUT_SIZE = 100
     CONF_THRESH = 0.05
+    TRAD_NMS = False
     NMS_THRESH = 0.5
 
     # Maximum number of ground truth instances to use in one image
@@ -89,7 +90,8 @@ class Config(object):
         "loss_weight_mask": 1.,
         "loss_weight_mask_iou": 1.,
     }
-
+    INCLUDE_VARIANCES = True # Include variance to bounding boxes or not.
+    
     # Allowed are : ['OHEM', 'FOCAL', 'CROSSENTROPY']
     LOSS_CLASSIFICATION = 'OHEM'
     ACTIVATION = 'SOFTMAX' # ['SOFTMAX', 'SIGMOID']
@@ -102,12 +104,12 @@ class Config(object):
     # implementation.
     # Allowed optimizer: ['SGD', 'Adam', 'SGDW', 'AdamW', 'AdaBelief']
     OPTIMIZER = 'SGD'
-    LEARNING_RATE = 4e-2
+    LEARNING_RATE = 4e-2 # 0.04 for batch of 16 
     N_WARMUP_STEPS = 1000
     WARMUP_LR = 0.0
     LEARNING_MOMENTUM = 0.9
     LR_SCHEDULE = False
-    TRAIN_ITER = 133092
+    TRAIN_ITER = 133092 # 12 epoch for fine-tuning mask. 110 epochs for bbox training.
     LR_TOTAL_STEPS = 133092
 
     # Weight decay regularization
@@ -119,6 +121,29 @@ class Config(object):
 
     MATCH_THRESHOLD = 0.5
     UNMATCHED_THRESHOLD = 0.5
+
+    '''
+     Supported Augmetations:
+        "RANDOM_ROTATE"
+        "ROTATION90"
+        "VERTICAL_FLIP"
+        "BRIGHTNESS"
+        "PHOTOMETRIC"
+        "ABSOLUTE_PAD_IMAGE"
+        "CROP_IMAGE"
+        "HORIZONTAL_FLIP"
+        "SQUARE_CROP_BY_SCALE"
+    '''
+    AUGMENTATIONS = [
+        "BRIGHTNESS"
+        "PHOTOMETRIC"
+        "ABSOLUTE_PAD_IMAGE"
+        "CROP_IMAGE"
+        "HORIZONTAL_FLIP"
+    ]
+
+    IGNORE_SMALL_BBOX = True
+    SMALL_BBOX_AREA = 4
 
     def to_dict(self):
         return {a: getattr(self, a)
