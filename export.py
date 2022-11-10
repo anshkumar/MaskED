@@ -1,7 +1,19 @@
 import tensorflow as tf
 from model import MaskED
-from config import Config
 from tensorflow.keras import layers
+from absl import app
+from absl import flags
+from importlib.machinery import SourceFileLoader
+import numpy as np
+
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string('checkpoint', None,
+                    'checkpoint path to export.')
+flags.DEFINE_string('config', None,
+                    'config path to export.')
+flags.DEFINE_string('out_saved_model_dir', None,
+                    'saved_model directory to save')
 
 class Model(MaskED):
     def __init__(self, config):
@@ -43,11 +55,17 @@ class Model(MaskED):
             pred.update({'detection_masks': masks})
         return pred
 
-config = Config()
-model = Model(config)
-# model.call = call
-checkpoint = tf.train.Checkpoint(model=model)
-status = checkpoint.restore('checkpoints/ckpt-15')
+def main(argv):
+    cnf = SourceFileLoader("", FLAGS.config).load_module()
+    
+    config = cnf.Config()
+    model = Model(config)
+    # model.call = call
+    checkpoint = tf.train.Checkpoint(model=model)
+    status = checkpoint.restore(FLAGS.checkpoint)
 
-_ = model(tf.random.uniform(shape=[16,512,512,3], minval=0, maxval=255, dtype=tf.float32), training=False)
-model.save('saved_models')
+    _ = model(tf.random.uniform(shape=[1]+config.IMAGE_SHAPE, minval=0, maxval=255, dtype=tf.float32), training=False)
+    model.save(FLAGS.out_saved_model_dir)
+
+if __name__ == '__main__':
+    app.run(main)
