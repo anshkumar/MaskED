@@ -4,7 +4,6 @@ from tensorflow.keras import layers
 from absl import app
 from absl import flags
 from importlib.machinery import SourceFileLoader
-import numpy as np
 
 FLAGS = flags.FLAGS
 

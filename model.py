@@ -125,7 +125,6 @@ class MaskED(tf.keras.Model):
         self.num_classes = config.NUM_CLASSES
         self.config = config
 
-    @tf.function()
     def call(self, inputs, training=False):
         inputs, gt_boxes = inputs[0], inputs[1]
 
