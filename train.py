@@ -509,7 +509,6 @@ def add_to_coco_evaluator(valid_image, valid_labels, output, config , coco_evalu
 
     if config.PREDICT_MASK:
       det_masks = output['detection_masks'][0][:det_num].numpy()
-      det_masks = (det_masks > 0.5).astype("uint8")
       det_masked_image = np.zeros((det_num, _h, _w), dtype=np.uint8)
       for _b in range(det_num):
           box = det_boxes[_b]
@@ -521,6 +520,7 @@ def add_to_coco_evaluator(valid_image, valid_labels, output, config , coco_evalu
           boxH = endY - startY
           if boxW > 0 and boxH > 0:
             _m = cv2.resize(_m, (boxW, boxH))
+            _m = (_m > 0.5).astype("uint8")
             det_masked_image[_b][startY:endY, startX:endX] = _m
       coco_evaluator.add_single_detected_image_info(
           image_id='image'+str(image_id),
@@ -643,6 +643,7 @@ def main(argv):
     best_val = 1e10
     iterations = checkpoint.step.numpy()
 
+    @tf.function
     def train_step(image, labels):
         clip_factor=0.01
         eps=1e-3

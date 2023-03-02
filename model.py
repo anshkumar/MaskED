@@ -35,7 +35,9 @@ class MaskED(tf.keras.Model):
                     'resnet50': tf.keras.applications.resnet50.ResNet50,
                     }
         out_layers = {'efficientnetv2b0': ['block3b_add','block5e_add','block6h_add'],
-                        'resnet50': ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
+                      'efficientnetv2b1': ['block3c_add', 'block5f_add', 'block6h_add'],
+                      'efficientnetv2b2': ['block3c_add', 'block5f_add', 'block6j_add'],
+                      'resnet50': ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
                     }
 
         if config.BACKBONE in ['resnet50']:
@@ -125,6 +127,7 @@ class MaskED(tf.keras.Model):
         self.num_classes = config.NUM_CLASSES
         self.config = config
 
+    @tf.function
     def call(self, inputs, training=False):
         inputs, gt_boxes = inputs[0], inputs[1]
 
