@@ -16,14 +16,20 @@ flags.DEFINE_string('saved_model_dir', None,
 flags.DEFINE_string('out_saved_model_dir', None,
                     'saved_model directory containg inference model')
 
+FP16 = False
+
 def main(argv):
     # See following link for details.
     # https://www.tensorflow.org/api_docs/python/tf/experimental/tensorrt/Converter
-    params = tf.experimental.tensorrt.ConversionParams(
-        precision_mode='INT8',
-        # Set this to a large enough number so it can cache all the engines.
-        # Currently only one INT8 engine is supported in this mode.
-        maximum_cached_engines=1)
+    if not FP16:
+        params = tf.experimental.tensorrt.ConversionParams(
+            precision_mode='INT8',
+            # Set this to a large enough number so it can cache all the engines.
+            # Currently only one INT8 engine is supported in this mode.
+            maximum_cached_engines=1)
+    else:
+        params = tf.experimental.tensorrt.ConversionParams(
+            precision_mode='FP16', maximum_cached_engines=16)
     converter = tf.experimental.tensorrt.Converter(
         input_saved_model_dir=FLAGS.saved_model_dir, conversion_params=params)
     
@@ -33,12 +39,16 @@ def main(argv):
     def my_input_fn():
         for name in glob.glob(os.path.join(FLAGS.calib_dir, '*.jpg')):
             image_org = cv2.imread(name)
-            image = cv2.resize(image_org, (512, 512))
+            image = cv2.resize(image_org, (512, 640))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image = image.astype(np.float32)
             yield tf.constant(image[None, ...])
 
-    converter.convert(calibration_input_fn=my_input_fn)
+    if not FP16:
+        converter.convert(calibration_input_fn=my_input_fn)
+    else:
+        converter.convert()
+
     converter.build(input_fn=my_input_fn)  # Generate corresponding TRT engines
     converter.save(FLAGS.out_saved_model_dir)  # Generated engines will be saved.
 

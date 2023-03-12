@@ -13,11 +13,11 @@ class Config(object):
     # Backbone network architecture
     # Supported values are: efficientnetv2b0, efficientnetv2b1, efficientnetv2b2,
     #         efficientnetv2b3, efficientnetv2b4, efficientnetv2b5, efficientnetv2b6
-    #		  efficientnetv2s, efficientnetv2m, efficientnetv2l,
+    #         efficientnetv2s, efficientnetv2m, efficientnetv2l,
     #         resnet50
     BACKBONE = "efficientnetv2b0"
     BASE_MODEL_TRAINABLE = True
-    FREEZE_BACKBONE_BN = True # False for bbox training. True for fine-tuning mask.
+    FREEZE_BACKBONE_BN = False # False for bbox training. True for fine-tuning mask.
 
     BATCH_SIZE = 16 # Batch size per GPU
     # (Height, Width, Channels)
@@ -41,12 +41,12 @@ class Config(object):
     W_BIFPN = 64
 
     # [3, 4, 5, 6, 7, 7, 8]
-    D_BIFPN = 3
+    D_BIFPN = 1
 
     # [3, 3, 3, 4, 4, 4, 5]
-    D_HEAD = 3
+    D_HEAD = 1
 
-    WEIGHTED_BIFPN = True
+    WEIGHTED_BIFPN = False
 
     FPN_FREEZE_BN = False
 
@@ -59,7 +59,7 @@ class Config(object):
 
     MAX_OUTPUT_SIZE = 100
     PER_CLASS_MAX_OUTPUT_SIZE = 100
-    CONF_THRESH = 0.05
+    CONF_THRESH = 0.01
     TRAD_NMS = False
     NMS_THRESH = 0.5
 
@@ -102,18 +102,20 @@ class Config(object):
     # The Mask RCNN paper uses lr=0.02, but on TensorFlow it causes
     # weights to explode. Likely due to differences in optimizer
     # implementation.
-    # Allowed optimizer: ['SGD', 'Adam', 'SGDW', 'AdamW', 'AdaBelief']
+    # Allowed optimizer: ['SGD', 'Adam', 'SGDW', 'AdamW', 'AdaBelief', 'Adafactor']
     OPTIMIZER = 'SGD'
-    LEARNING_RATE = 4e-2 # 0.04 for batch of 16 
+    # Allowed ['PiecewiseConstantDecay', 'CosineDecay']
+    LEARNINGRATESCHEDULE = 'CosineDecay' 
+    LEARNING_RATE = 4e-3 # 0.04 for batch of 16 
     N_WARMUP_STEPS = 1000
     WARMUP_LR = 0.0
     LEARNING_MOMENTUM = 0.9
     LR_SCHEDULE = False
-    TRAIN_ITER = 133092 # 12 epoch for fine-tuning mask. 110 epochs for bbox training.
-    LR_TOTAL_STEPS = 133092
+    TOTAL_EPOCHS = 100 # 12 epoch for fine-tuning mask. 110 epochs for bbox training.
+    LR_TOTAL_STEPS = 739300
 
     # Weight decay regularization
-    WEIGHT_DECAY = 1e-4 # 5*1e-4
+    WEIGHT_DECAY = 5*1e-4
 
     # Gradient norm clipping or AGC (Will use either one of them.)
     GRADIENT_CLIP_NORM = 10
@@ -144,6 +146,8 @@ class Config(object):
 
     IGNORE_SMALL_BBOX = True
     SMALL_BBOX_AREA = 4
+    
+    MAX_DISPLAY_IMAGES = 20
 
     def to_dict(self):
         return {a: getattr(self, a)
