@@ -24,15 +24,16 @@ def prepare_dataloader(config, tfrecord_dir, feature_map_size, batch_size, subse
     files = tf.io.matching_files(os.path.join(tfrecord_dir, "*.*"))
     num_shards = tf.cast(tf.shape(files)[0], tf.int64)
     shards = tf.data.Dataset.from_tensor_slices(files)
-    shards = shards.shuffle(num_shards)
-    shards = shards.repeat()
+    # shards = shards.shuffle(num_shards)
+    # shards = shards.repeat()
     dataset = shards.interleave(tf.data.TFRecordDataset,
                                 cycle_length=num_shards,
                                 num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = dataset.shuffle(buffer_size=2048)
+    # dataset = dataset.shuffle(buffer_size=2048)
     dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    # dataset = dataset.repeat()
     dataset = dataset.batch(batch_size, drop_remainder=True)
-    dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    # dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     return dataset
