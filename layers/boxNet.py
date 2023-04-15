@@ -21,7 +21,7 @@ class WeightStandardizedConv2D(layers.Conv2D):
 class WeightStandardizedSeparableConv(layers.SeparableConv2D):
     def convolution_op(self, inputs, kernel):
         mean, var = tf.nn.moments(kernel, axes=[0, 1, 2], keepdims=True)
-        return tf.nn.conv2d(
+        return tf.nn.depthwise_conv2d(
             inputs,
             (kernel - mean) / tf.sqrt(var + 1e-10),
             padding="VALID",

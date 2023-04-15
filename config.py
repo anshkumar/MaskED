@@ -15,7 +15,8 @@ class Config(object):
     #         efficientnetv2b3, efficientnetv2b4, efficientnetv2b5, efficientnetv2b6
     #         efficientnetv2s, efficientnetv2m, efficientnetv2l,
     #         resnet50
-    BACKBONE = "efficientnetv2b0"
+    #         efficientnetlite0, efficientnetlite1, efficientnetlite2, efficientnetlite3, efficientnetlite4
+    BACKBONE = "efficientnetlite4"
     BASE_MODEL_TRAINABLE = True
     FREEZE_BACKBONE_BN = False # False for bbox training. True for fine-tuning mask.
 
@@ -29,11 +30,13 @@ class Config(object):
     ANCHOR_RATIOS =  [ [[1, 1/2, 2]] ]*5
 
     # Length of square anchor side in pixels
-    # ANCHOR_SCALES = [list(i*np.array([2 ** 0, 2 ** (1. / 3.), 2 ** (2. / 3.)])) for i in [16, 32, 64, 128, 256]]
+    # ANCHOR_SCALES = [list(i*np.array([2 ** 0, 2 ** (1. / 3.), 2 ** (2. / 3.)])) for i in [32, 64, 128, 256, 512]]
     ANCHOR_SCALES = [[24.0, 30.238105197476955, 38.097625247236785], [48.0, 60.47621039495391, 76.19525049447357], [96.0, 120.95242078990782, 152.39050098894714], [192.0, 241.90484157981564, 304.7810019778943], [384.0, 483.8096831596313, 609.5620039557886]]
+    # ANCHOR_SCALES = [[32.0,], [64.0,], [128.0,], [256.0], [512.0]]
+    ANCHOR_PER_PIX = 9
 
     # Weather to use FPN or BiFPN
-    USE_FPN = False
+    USE_FPN = True
     FPN_FEATURE_MAP_SIZE = 256
 
     # BiFPN settings
@@ -41,12 +44,12 @@ class Config(object):
     W_BIFPN = 64
 
     # [3, 4, 5, 6, 7, 7, 8]
-    D_BIFPN = 1
+    D_BIFPN = 3
 
     # [3, 3, 3, 4, 4, 4, 5]
-    D_HEAD = 1
+    D_HEAD = 3
 
-    WEIGHTED_BIFPN = False
+    WEIGHTED_BIFPN = True
 
     FPN_FREEZE_BN = False
 
@@ -59,9 +62,9 @@ class Config(object):
 
     MAX_OUTPUT_SIZE = 100
     PER_CLASS_MAX_OUTPUT_SIZE = 100
-    CONF_THRESH = 0.01
+    CONF_THRESH = 0.05
     TRAD_NMS = False
-    NMS_THRESH = 0.5
+    NMS_THRESH = 0.3
 
     # Maximum number of ground truth instances to use in one image
     NUM_MAX_FIX_PADDING = 100 
@@ -71,7 +74,7 @@ class Config(object):
 
     PREDICT_MASK = True
     # Pooled ROIs
-    MASK_POOL_SIZE = 14
+    MASK_POOL_SIZE = 7
 
     # Shape of output mask
     # To change this you also need to change the neural network mask branch
@@ -86,11 +89,11 @@ class Config(object):
     # Loss weights for more precise optimization.
     LOSS_WEIGHTS = {
         "loss_weight_cls": 1.,
-        "loss_weight_box": 1.,
+        "loss_weight_box": 50.,
         "loss_weight_mask": 1.,
         "loss_weight_mask_iou": 1.,
     }
-    INCLUDE_VARIANCES = True # Include variance to bounding boxes or not.
+    INCLUDE_VARIANCES = False # Include variance to bounding boxes or not.
     
     # Allowed are : ['OHEM', 'FOCAL', 'CROSSENTROPY']
     LOSS_CLASSIFICATION = 'OHEM'
@@ -106,13 +109,13 @@ class Config(object):
     OPTIMIZER = 'SGD'
     # Allowed ['PiecewiseConstantDecay', 'CosineDecay']
     LEARNINGRATESCHEDULE = 'CosineDecay' 
-    LEARNING_RATE = 4e-3 # 0.04 for batch of 16 
-    N_WARMUP_STEPS = 1000
+    LEARNING_RATE = 0.04 # 0.04 for batch of 16 
+    N_WARMUP_STEPS = 7706
     WARMUP_LR = 0.0
     LEARNING_MOMENTUM = 0.9
     LR_SCHEDULE = False
-    TOTAL_EPOCHS = 100 # 12 epoch for fine-tuning mask. 110 epochs for bbox training.
-    LR_TOTAL_STEPS = 739300
+    TOTAL_EPOCHS = 55 # 12 epoch for fine-tuning mask. 110 epochs for bbox training.
+    LR_TOTAL_STEPS = 7706*55
 
     # Weight decay regularization
     WEIGHT_DECAY = 5*1e-4
@@ -138,9 +141,6 @@ class Config(object):
     '''
     AUGMENTATIONS = [
         "BRIGHTNESS"
-        "PHOTOMETRIC"
-        "ABSOLUTE_PAD_IMAGE"
-        "CROP_IMAGE"
         "HORIZONTAL_FLIP"
     ]
 
