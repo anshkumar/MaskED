@@ -135,7 +135,7 @@ class MaskED(tf.keras.Model):
                                  separable_conv=config.SEPARABLE_CONV, freeze_bn=config.FPN_FREEZE_BN, 
                                  activation=config.ACTIVATION, name='class_net')
         else:
-            self.predictionHead = PredictionModule(config.FPN_FEATURE_MAP_SIZE, config.ANCHOR_PER_PIX, config.NUM_CLASSES+1)
+            self.predictionHead = PredictionModule(config)
 
         self.num_anchors = anchorobj.num_anchors
         self.priors = anchorobj.anchors
@@ -191,13 +191,13 @@ class MaskED(tf.keras.Model):
             # Use features from C3 to C5 only, as shown in Ablation study in CenterMask
             if training:
                 masks = self.mask_head(gt_boxes,
-                                features[:-2],
+                                features[:-(self.config.TOTAL_FEAT_LAYERS-self.config.MAX_MASK_FEAT_LAYER)],
                                 self.num_classes,
                                 self.config,
                                 training)
             else:
                 masks = self.mask_head(pred['detection_boxes'],
-                                features[:-2],
+                                features[:-(self.config.TOTAL_FEAT_LAYERS-self.config.MAX_MASK_FEAT_LAYER)],
                                 self.num_classes,
                                 self.config,
                                 training)

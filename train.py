@@ -445,6 +445,15 @@ def update_val_losses(test_summary_writer, iterations, metrics, coco_metrics, co
                                 metrics.v_conf.result(),
                                 metrics.v_mask.result(),
                                 metrics.v_mask_iou.result()))
+def draw_label(image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX,
+               font_scale=0.5, thickness=2):
+    size = cv2.getTextSize(label, font, font_scale, thickness)[0]
+    x, y = point
+
+    cv2.rectangle(image, (x, y - size[1]),
+                  (x + size[0], y), (255, 0, 0), cv2.FILLED)
+    cv2.putText(image, label, point, font, font_scale,
+                (255, 255, 255), thickness)
 
 def draw_contours(image, num, boxes, classes, scores, masks, config, is_gt):
   for i in range(num):
@@ -467,7 +476,7 @@ def draw_contours(image, num, boxes, classes, scores, masks, config, is_gt):
         image[_y1:_y2, _x1:_x2][mask] = blended*[0,0,0.6]
 
     cv2.rectangle(image, (_x1, _y1), (_x2, _y2), (0, 255, 0), 2)
-    cv2.putText(image, str(_class)+': '+str(round(scores[i],2)), (_x1, _y1), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), lineType=cv2.LINE_AA)
+    draw_label(image, (_x1, _y1), str(_class)+': '+str(round(scores[i],2)), )
     
 def add_to_coco_evaluator(_idx, valid_image, valid_labels, output, config , coco_evaluator, _h,_w):
     gt_image = valid_image.numpy().copy()
@@ -690,8 +699,10 @@ def main(argv):
         return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
                          axis=None)
 
+    iterations = init_epoch * config.STEPS_PER_EPOCH
     for epoch in range(init_epoch, config.TOTAL_EPOCHS):
-        for iterations, (image, labels) in enumerate(train_dataset):
+        for image, labels in train_dataset:
+            iterations += 1
             if FLAGS.multi_gpu:
                 loc_loss, conf_loss, mask_loss, mask_iou_loss, total_loss = distributed_train_step(image, labels)
             else:

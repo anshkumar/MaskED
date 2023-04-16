@@ -36,18 +36,25 @@ class FastMaskIoUNet(tf.keras.layers.Layer):
 
 class PredictionModule(tf.keras.layers.Layer):
 
-    def __init__(self, out_channels, num_anchors, num_class):
+    def __init__(self, config):
         super(PredictionModule, self).__init__()
-        self.num_anchors = num_anchors
-        self.num_class = num_class
-
+        self.config = config
+        self.num_anchors = config.ANCHOR_PER_PIX
+        self.num_class = config.NUM_CLASSES+1
+        out_channels = config.FPN_FEATURE_MAP_SIZE
         self.Conv = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
                                            kernel_initializer=  tf.keras.initializers.RandomNormal(stddev=0.01),
                                           )
 
-        self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
-                                                kernel_initializer= tf.keras.initializers.TruncatedNormal(stddev=0.03),
-                                              )
+        if config.LOSS_CLASSIFICATION == 'FOCAL':
+            self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
+                                                    kernel_initializer= tf.keras.initializers.TruncatedNormal(stddev=0.03),
+                                                    bias_initializer=tf.keras.initializers.Constant(-4.6)
+                                                  )
+        else:
+            self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
+                                                    kernel_initializer= tf.keras.initializers.TruncatedNormal(stddev=0.03),
+                                                  )
 
         self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same",
                                               kernel_initializer= tf.keras.initializers.TruncatedNormal(stddev=0.03),
@@ -67,6 +74,9 @@ class PredictionModule(tf.keras.layers.Layer):
         # reshape the prediction head result for following loss calculation
         pred_class = tf.reshape(pred_class, [tf.shape(pred_class)[0], -1, self.num_class])
         pred_box = tf.reshape(pred_box, [tf.shape(pred_box)[0], -1, 4])
-        pred_class = tf.nn.softmax(pred_class, axis=-1)
+        if self.config.ACTIVATION == 'SIGMOID':
+            pred_class = tf.math.sigmoid(pred_class)
+        else:
+            pred_class = tf.nn.softmax(pred_class, axis=-1)
         
         return pred_class, pred_box 

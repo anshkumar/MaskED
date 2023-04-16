@@ -31,9 +31,9 @@ class Config(object):
 
     # Length of square anchor side in pixels
     # ANCHOR_SCALES = [list(i*np.array([2 ** 0, 2 ** (1. / 3.), 2 ** (2. / 3.)])) for i in [32, 64, 128, 256, 512]]
-    ANCHOR_SCALES = [[24.0, 30.238105197476955, 38.097625247236785], [48.0, 60.47621039495391, 76.19525049447357], [96.0, 120.95242078990782, 152.39050098894714], [192.0, 241.90484157981564, 304.7810019778943], [384.0, 483.8096831596313, 609.5620039557886]]
-    # ANCHOR_SCALES = [[32.0,], [64.0,], [128.0,], [256.0], [512.0]]
-    ANCHOR_PER_PIX = 9
+    # ANCHOR_SCALES = [[24.0, 30.238105197476955, 38.097625247236785], [48.0, 60.47621039495391, 76.19525049447357], [96.0, 120.95242078990782, 152.39050098894714], [192.0, 241.90484157981564, 304.7810019778943], [384.0, 483.8096831596313, 609.5620039557886]]
+    ANCHOR_SCALES = [[32.0,], [64.0,], [128.0,], [256.0], [512.0]]
+    ANCHOR_PER_PIX = 3
 
     # Weather to use FPN or BiFPN
     USE_FPN = True
@@ -75,6 +75,13 @@ class Config(object):
     PREDICT_MASK = True
     # Pooled ROIs
     MASK_POOL_SIZE = 7
+    # Maximum layer name to extract features from. Read Ablation study in CenterMask.
+    MAX_MASK_FEAT_LAYER = 4
+
+    # Maximum layer name to extract features from. (Do NOT change this).
+    MIN_MASK_FEAT_LAYER = 3
+    # Total number of feature layers after FPN or biFPN. (Do NOT change this).
+    TOTAL_FEAT_LAYERS = 7
 
     # Shape of output mask
     # To change this you also need to change the neural network mask branch
@@ -89,7 +96,7 @@ class Config(object):
     # Loss weights for more precise optimization.
     LOSS_WEIGHTS = {
         "loss_weight_cls": 1.,
-        "loss_weight_box": 50.,
+        "loss_weight_box": 1.,
         "loss_weight_mask": 1.,
         "loss_weight_mask_iou": 1.,
     }
@@ -109,7 +116,7 @@ class Config(object):
     OPTIMIZER = 'SGD'
     # Allowed ['PiecewiseConstantDecay', 'CosineDecay']
     LEARNINGRATESCHEDULE = 'CosineDecay' 
-    LEARNING_RATE = 0.04 # 0.04 for batch of 16 
+    LEARNING_RATE = 0.008 # 0.04 for batch of 16 
     N_WARMUP_STEPS = 7706
     WARMUP_LR = 0.0
     LEARNING_MOMENTUM = 0.9
@@ -140,7 +147,7 @@ class Config(object):
         "SQUARE_CROP_BY_SCALE"
     '''
     AUGMENTATIONS = [
-        "BRIGHTNESS"
+        "SQUARE_CROP_BY_SCALE", 
         "HORIZONTAL_FLIP"
     ]
 
