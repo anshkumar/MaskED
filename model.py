@@ -173,6 +173,15 @@ class MaskED(tf.keras.Model):
                             name=cur_name + "max_down")(additional_feature)
                 outputs.append(additional_feature)
 
+        # whether to freeze the convolutional base
+        base_model.trainable = config.BASE_MODEL_TRAINABLE 
+
+        # Freeze BatchNormalization in pre-trained backbone
+        if config.FREEZE_BACKBONE_BN:
+          for layer in base_model.layers:
+              if isinstance(layer, tf.keras.layers.BatchNormalization):
+                layer.trainable = False
+                
         if not config.USE_FPN:
             for id in range(config.D_BIFPN):
                 outputs = bi_fpn(
@@ -247,16 +256,6 @@ class MaskED(tf.keras.Model):
             # extract certain feature maps for FPN
             self.backbone = tf.keras.Model(inputs=base_model.input,
                                            outputs=fpn_features)
-
-
-        # whether to freeze the convolutional base
-        base_model.trainable = config.BASE_MODEL_TRAINABLE 
-
-        # Freeze BatchNormalization in pre-trained backbone
-        if config.FREEZE_BACKBONE_BN:
-          for layer in base_model.layers:
-              if isinstance(layer, tf.keras.layers.BatchNormalization):
-                layer.trainable = False
 
         self.priors = anchorobj.anchors
         self.rescale = layers.Rescaling(scale=1. / 255)
