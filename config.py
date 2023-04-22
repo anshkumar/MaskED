@@ -101,8 +101,8 @@ class Config(object):
     INCLUDE_VARIANCES = False # Include variance to bounding boxes or not.
     
     # Allowed are : ['OHEM', 'FOCAL', 'CROSSENTROPY']
-    LOSS_CLASSIFICATION = 'OHEM'
-    ACTIVATION = 'softmax' # ['softmax', 'sigmoid']
+    LOSS_CLASSIFICATION = 'FOCAL'
+    ACTIVATION = 'sigmoid' # ['softmax', 'sigmoid']
     NEG_POS_RATIO = 3
     USE_MASK_IOU = False
 

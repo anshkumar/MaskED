@@ -4,6 +4,7 @@ from tensorflow.keras import layers
 from keras_cv_attention_models import efficientnet
 from keras_cv_attention_models import swin_transformer_v2 as swin_v2
 from layers.biFPN import bi_fpn, det_header_pre, det_header_post
+from download_and_load import reload_model_weights
 from layers.fpn import build_FPN
 from layers.maskNet import MaskHead
 from tensorflow.keras import initializers
@@ -112,6 +113,23 @@ class MaskED(tf.keras.Model):
                                     "stack4_block2_output",
                                      ]
                     }
+        PRETRAINED_DICT_MAP = {
+                    "efficientnetv1_b0": "efficientdet_d0", 
+                    "efficientnetv1_b1": "efficientdet_d1", 
+                    "efficientnetv1_b2": "efficientdet_d2", 
+                    "efficientnetv1_b3": "efficientdet_d3", 
+                    "efficientnetv1_b4": "efficientdet_d4", 
+                    "efficientnetv1_b5": "efficientdet_d5", 
+                    "efficientnetv1_b6": "efficientdet_d6", 
+                    "efficientnetv1_b7": "efficientdet_d7", 
+                    "efficientnetv1_b7x": "efficientdet_d7x", 
+                    "efficientnetv1_lite0": "efficientdet_lite0", 
+                    "efficientnetv1_lite1": "efficientdet_lite1", 
+                    "efficientnetv1_lite2": "efficientdet_lite2", 
+                    "efficientnetv1_lite3": "efficientdet_lite3", 
+                    "efficientnetv1_lite3x": "efficientdet_lite3x", 
+                    "efficientnetv1_lite4": "efficientdet_lite4", 
+        }
 
         if config.BACKBONE in ['resnet50']:
             base_model = backbones[config.BACKBONE](
@@ -154,15 +172,6 @@ class MaskED(tf.keras.Model):
                             padding="SAME", 
                             name=cur_name + "max_down")(additional_feature)
                 outputs.append(additional_feature)
-
-        # whether to freeze the convolutional base
-        base_model.trainable = config.BASE_MODEL_TRAINABLE 
-
-        # Freeze BatchNormalization in pre-trained backbone
-        if config.FREEZE_BACKBONE_BN:
-          for layer in base_model.layers:
-              if isinstance(layer, tf.keras.layers.BatchNormalization):
-                layer.trainable = False
 
         if not config.USE_FPN:
             for id in range(config.D_BIFPN):
@@ -229,12 +238,25 @@ class MaskED(tf.keras.Model):
             # extract certain feature maps for FPN
             self.backbone = tf.keras.Model(inputs=base_model.input,
                                            outputs=pred)
+            reload_model_weights(self.backbone, 
+                                 "efficientdet", 
+                                 PRETRAINED_DICT_MAP[config.BACKBONE], 
+                                 "coco")
         else:
             self.predictionHead = PredictionModule(config)
             # extract certain feature maps for FPN
             self.backbone = tf.keras.Model(inputs=base_model.input,
                                            outputs=fpn_features)
 
+
+        # whether to freeze the convolutional base
+        base_model.trainable = config.BASE_MODEL_TRAINABLE 
+
+        # Freeze BatchNormalization in pre-trained backbone
+        if config.FREEZE_BACKBONE_BN:
+          for layer in base_model.layers:
+              if isinstance(layer, tf.keras.layers.BatchNormalization):
+                layer.trainable = False
 
         self.priors = anchorobj.anchors
         self.rescale = layers.Rescaling(scale=1. / 255)
