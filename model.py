@@ -1,15 +1,12 @@
 import tensorflow as tf
 
 from tensorflow.keras import layers
-from backbone import efficientnet_v2
-from backbone import efficientnet_lite
-from backbone import spaghettinet
+from keras_cv_attention_models import efficientnet
 from keras_cv_attention_models import swin_transformer_v2 as swin_v2
-from layers.biFPN import build_wBiFPN, build_BiFPN 
+from layers.biFPN import bi_fpn, det_header_pre, det_header_post
 from layers.fpn import build_FPN
-from layers.boxNet import BoxNet
-from layers.classNet import ClassNet
 from layers.maskNet import MaskHead
+from tensorflow.keras import initializers
 from layers.head import PredictionModule, FastMaskIoUNet
 assert tf.__version__.startswith('2')
 from detection import Detect
@@ -26,42 +23,92 @@ class MaskED(tf.keras.Model):
     def __init__(self, config):
         super(MaskED, self).__init__()
 
-        backbones = {'efficientnetv2b0': efficientnet_v2.EfficientNetV2B0, 
-                    'efficientnetv2b1': efficientnet_v2.EfficientNetV2B1, 
-                    'efficientnetv2b2': efficientnet_v2.EfficientNetV2B2, 
-                    'efficientnetv2b3': efficientnet_v2.EfficientNetV2B3, 
-                    'efficientnetv2s': efficientnet_v2.EfficientNetV2S, 
-                    'efficientnetv2m': efficientnet_v2.EfficientNetV2M, 
-                    'efficientnetv2l': efficientnet_v2.EfficientNetV2L,
-                    'resnet50': tf.keras.applications.resnet50.ResNet50,
-                    'spaghettinet_edgetpu_s': \
-                                        spaghettinet._spaghettinet_edgetpu_s(),
-                    'spaghettinet_edgetpu_m': \
-                                        spaghettinet._spaghettinet_edgetpu_m(),
-                    'spaghettinet_edgetpu_l': \
-                                        spaghettinet._spaghettinet_edgetpu_l(),
-                    'efficientnetlite0': efficientnet_lite.EfficientNetLiteB0,
-                    'efficientnetlite1': efficientnet_lite.EfficientNetLiteB1,
-                    'efficientnetlite2': efficientnet_lite.EfficientNetLiteB2,
-                    'efficientnetlite3': efficientnet_lite.EfficientNetLiteB3,
-                    'efficientnetlite4': efficientnet_lite.EfficientNetLiteB4,
+        backbones = {
+                    "efficientdet_b0": efficientnet.EfficientNetV1B0,
+                    "efficientdet_b1": efficientnet.EfficientNetV1B1,
+                    "efficientdet_b2": efficientnet.EfficientNetV1B2,
+                    "efficientdet_b3": efficientnet.EfficientNetV1B3,
+                    "efficientdet_b4": efficientnet.EfficientNetV1B4,
+                    "efficientdet_b5": efficientnet.EfficientNetV1B5,
+                    "efficientdet_b6": efficientnet.EfficientNetV1B6,
+                    "efficientdet_b7": efficientnet.EfficientNetV1B6,
+                    "efficientdet_b7x": efficientnet.EfficientNetV1B7,
+                    "efficientdet_lite0": efficientnet.EfficientNetV1Lite0,
+                    "efficientdet_lite1": efficientnet.EfficientNetV1Lite1,
+                    "efficientdet_lite2": efficientnet.EfficientNetV1Lite2,
+                    "efficientdet_lite3": efficientnet.EfficientNetV1Lite3,
+                    "efficientdet_lite3x": efficientnet.EfficientNetV1Lite3,
+                    "efficientdet_lite4": efficientnet.EfficientNetV1Lite4,
                     'swin-tiny' : swin_v2.SwinTransformerV2Tiny_window8,
                     }
-        out_layers = {'efficientnetv2b0': ['block3b_add','block5e_add',
-                                            'block6h_add'],
-                      'efficientnetv2b1': ['block3c_add', 'block5f_add', 
-                                            'block6h_add'],
-                      'efficientnetv2b2': ['block3c_add', 'block5f_add', 
-                                            'block6j_add'],
-                      'efficientnetlite4': ['block3d_add', 'block5f_add', 
-                                            'block6h_add'],
-                      'efficientnetlite0': ['block3b_add', 'block5c_add', 
-                                            'block6d_add'],
-                      'resnet50': ['conv3_block4_out', 'conv4_block6_out', 
-                                   'conv5_block3_out'],
-                      'swin-tiny' : ['stack2_block2_output', 
-                                     'stack3_block6_output',
-                                     'stack4_block2_output',
+        out_layers = {'efficientnetv2b0': [
+                                            "stack_2_block1_output", 
+                                            "stack_4_block2_output", 
+                                            "stack_6_block0_output"],
+                      'efficientnetv2b1': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block3_output", 
+                                            "stack_6_block1_output"],
+                      'efficientnetv2b2': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block3_output", 
+                                            "stack_6_block1_output"],
+                      'efficientnetv2b3': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block4_output", 
+                                            "stack_6_block1_output"],
+                      'efficientnetv2b4': [
+                                            "stack_2_block3_output", 
+                                            "stack_4_block5_output", 
+                                            "stack_6_block1_output"],
+                      'efficientnetv2b5': [
+                                            "stack_2_block4_output", 
+                                            "stack_4_block6_output", 
+                                            "stack_6_block2_output"],
+                      'efficientnetv2b6': [
+                                            "stack_2_block5_output", 
+                                            "stack_4_block7_output", 
+                                            "stack_6_block2_output"],
+                      'efficientnetv2b7': [
+                                            "stack_2_block5_output", 
+                                            "stack_4_block7_output", 
+                                            "stack_6_block2_output"],
+                      'efficientnetv2b7x': [
+                                            "stack_2_block6_output", 
+                                            "stack_4_block9_output", 
+                                            "stack_6_block3_output"]
+                      'efficientnetlite0': [
+                                            "stack_2_block1_output", 
+                                            "stack_4_block2_output", 
+                                            "stack_6_block0_output"],
+                      'efficientnetlite1': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block3_output", 
+                                            "stack_6_block0_output"],
+                      'efficientnetlite2': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block3_output", 
+                                            "stack_6_block0_output"],
+                      'efficientnetlite3': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block4_output", 
+                                            "stack_6_block0_output"],
+                      'efficientnetlite3x': [
+                                            "stack_2_block2_output", 
+                                            "stack_4_block4_output", 
+                                            "stack_6_block0_output"]
+                      'efficientnetlite4': [
+                                            "stack_2_block3_output", 
+                                            "stack_4_block5_output", 
+                                            "stack_6_block0_output"],
+                      'resnet50': [
+                                    "conv3_block4_out", 
+                                    "conv4_block6_out", 
+                                    "conv5_block3_out"],
+                      'swin-tiny' : [
+                                    "stack2_block2_output", 
+                                    "stack3_block6_output",
+                                    "stack4_block2_output",
                                      ]
                     }
 
@@ -73,22 +120,6 @@ class MaskED(tf.keras.Model):
                         )
             outputs=[base_model.get_layer(x).output \
                     for x in out_layers[config.BACKBONE]]
-        elif config.BACKBONE in ['spaghettinet_edgetpu_s', 
-                                 'spaghettinet_edgetpu_m', 
-                                 'spaghettinet_edgetpu_l']:
-            base_model = spaghettinet.SpaghettiNet(
-                node_specs=backbones[config.BACKBONE],
-                )
-        elif config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 
-                                 'efficientnetlite2', 'efficientnetlite3', 
-                                 'efficientnetlite4']:
-            base_model = backbones[config.BACKBONE](
-                                include_top=False,
-                                weights='imagenet',
-                                input_shape=config.IMAGE_SHAPE,
-                            )
-            outputs=[base_model.get_layer(x).output \
-                    for x in out_layers[config.BACKBONE]]
         elif config.BACKBONE in ['swin-tiny']:
             base_model = backbones[config.BACKBONE](
                             pretrained='imagenet',
@@ -98,13 +129,30 @@ class MaskED(tf.keras.Model):
                      for x in out_layers[config.BACKBONE]]
         else:
             base_model = backbones[config.BACKBONE](
-                                include_top=False,
-                                weights='imagenet',
                                 input_shape=config.IMAGE_SHAPE,
-                                include_preprocessing=True
+                                num_classes=0,
+                                output_conv_filter=0,
+                                activation='swish',
                             )
             outputs=[base_model.get_layer(x).output \
                     for x in out_layers[config.BACKBONE]]
+
+            # Build additional input features that are not from backbone.
+            for id in range(2): # Add p5->p6, p6->p7
+                cur_name = "p{}_p{}_".format(id + 5, id + 6)
+                additional_feature = tf.keras.layers.Conv2D(
+                            config.W_BIFPN, 
+                            kernel_size=1, 
+                            name=cur_name + "channel_conv")(outputs[-1])
+                additional_feature = tf.keras.layers.BatchNormalization(
+                            epsilon=1e-3, 
+                            name=cur_name + "channel_bn")(additional_feature)
+                additional_feature = tf.keras.layers.MaxPool2D(
+                            pool_size=3, 
+                            strides=2, 
+                            padding="SAME", 
+                            name=cur_name + "max_down")(additional_feature)
+                outputs.append(additional_feature)
 
         # whether to freeze the convolutional base
         base_model.trainable = config.BASE_MODEL_TRAINABLE 
@@ -115,70 +163,76 @@ class MaskED(tf.keras.Model):
               if isinstance(layer, tf.keras.layers.BatchNormalization):
                 layer.trainable = False
 
-        
         if not config.USE_FPN:
-            if config.WEIGHTED_BIFPN:
-                fpn_features = [None, None]+outputs
-                for i in range(config.D_BIFPN):
-                    fpn_features = build_wBiFPN(fpn_features, config.W_BIFPN, i)
-            else:
-                fpn_features = [None, None]+outputs
-                for i in range(config.D_BIFPN):
-                    fpn_features = build_BiFPN(fpn_features, config.W_BIFPN, i)
+            for id in range(config.D_BIFPN):
+                outputs = bi_fpn(
+                                outputs, 
+                                config.W_BIFPN, 
+                                config.WEIGHTED_BIFPN, 
+                                config.SEPARABLE_CONV, 
+                                activation="swish", 
+                                name="biFPN_{}_".format(id + 1))
+                fpn_features = outputs
         else:
             fpn_features = build_FPN(outputs, config.FPN_FEATURE_MAP_SIZE)
-        
-        # extract certain feature maps for FPN
-        self.backbone = tf.keras.Model(inputs=base_model.input,
-                                       outputs=fpn_features)
 
         self.mask_head = MaskHead(config)
 
-        # Calculating feature map size
-        # https://stackoverflow.com/a/44242277/4582711
-        # https://github.com/tensorflow/tensorflow/issues/4297#issuecomment-\
-        # 246080982
-        self.feature_map_size = np.array(
-            [list(base_model.get_layer(x).output.shape[1:3]) \
-            for x in out_layers[config.BACKBONE]])
-        out_height_p6 = np.ceil(
-            (self.feature_map_size[-1, 0]).astype(np.float32) / float(2))
-        out_width_p6  = np.ceil(
-            (self.feature_map_size[-1, 1]).astype(np.float32) / float(2))
-        out_height_p7 = np.ceil(out_height_p6 / float(2))
-        out_width_p7  = np.ceil(out_width_p6/ float(2))
-        self.feature_map_size = np.concatenate(
-            (self.feature_map_size, 
-            [[out_height_p6, out_width_p6], [out_height_p7, out_width_p7]]), 
-            axis=0)
-
-        anchorobj = anchor.Anchor(
-                                  img_size_h=config.IMAGE_SHAPE[0],
-                                  img_size_w=config.IMAGE_SHAPE[1],
-                                  feature_map_size=self.feature_map_size,
-                                  aspect_ratio=config.ANCHOR_RATIOS,
-                                  scale=config.ANCHOR_SCALES)
+        anchorobj = anchor.Anchor(config=config)
 
         if not config.USE_FPN:
-            self.box_net = BoxNet(
-                                  config.W_BIFPN, 
-                                  config.D_HEAD, 
-                                  num_anchors=config.ANCHOR_PER_PIX, 
-                                  separable_conv=config.SEPARABLE_CONV, 
-                                  freeze_bn=config.FPN_FREEZE_BN,
-                                  detect_quadrangle=config.DETECT_QUADRANGLE, 
-                                  name='box_net')
-            self.class_net = ClassNet(
-                                      config.W_BIFPN, 
-                                      config.D_HEAD, 
-                                      num_classes=config.NUM_CLASSES+1, 
-                                      num_anchors=config.ANCHOR_PER_PIX,
-                                      separable_conv=config.SEPARABLE_CONV, 
-                                      freeze_bn=config.FPN_FREEZE_BN, 
-                                      activation=config.ACTIVATION, 
-                                      name='class_net')
+            # Outputs
+            bboxes_features = det_header_pre(
+                                            fpn_features, 
+                                            config.W_BIFPN, 
+                                            config.D_HEAD, 
+                                            config.SEPARABLE_CONV, 
+                                            activation="swish", 
+                                            name="regressor_")
+            box_net = det_header_post(
+                                        bboxes_features,
+                                        4, 
+                                        config.ANCHOR_PER_PIX, 
+                                        bias_init="zeros", 
+                                        use_sep_conv=config.SEPARABLE_CONV, 
+                                        head_activation=None, name="regressor_")
+
+            if config.LOSS_CLASSIFICATION == "FOCAL":
+                bias_init = initializers.constant(-math.log((1 - 0.01) / 0.01))
+            else:
+                bias_init = initializers.constant(0.0)
+            class_features = det_header_pre(
+                                            fpn_features, 
+                                            config.W_BIFPN, 
+                                            config.D_HEAD, 
+                                            config.SEPARABLE_CONV, 
+                                            activation="swish", 
+                                            name="classifier_")
+            if config.ACTIVATION == "SOFTMAX":
+                num_classes = config.NUM_CLASSES+1
+            else:
+                num_classes = config.NUM_CLASSES
+            class_net = det_header_post(
+                                        class_features, 
+                                        num_classes, 
+                                        config.ANCHOR_PER_PIX, 
+                                        bias_init, 
+                                        config.SEPARABLE_CONV, 
+                                        config.ACTIVATION, 
+                                        name="classifier_")
+            pred = {
+                    'regression': box_net,
+                    'classification': class_net,
+                }
+            # extract certain feature maps for FPN
+            self.backbone = tf.keras.Model(inputs=base_model.input,
+                                           outputs=pred)
         else:
             self.predictionHead = PredictionModule(config)
+            # extract certain feature maps for FPN
+            self.backbone = tf.keras.Model(inputs=base_model.input,
+                                           outputs=fpn_features)
+
 
         self.num_anchors = anchorobj.num_anchors
         self.priors = anchorobj.anchors
@@ -190,12 +244,7 @@ class MaskED(tf.keras.Model):
           )
 
         # post-processing for evaluation
-        self.detect = Detect(
-                 config.NUM_CLASSES+1, 
-                 max_output_size=config.MAX_OUTPUT_SIZE, 
-                 per_class_max_output_size=config.PER_CLASS_MAX_OUTPUT_SIZE,
-                 conf_thresh=config.CONF_THRESH, nms_thresh=config.NMS_THRESH, 
-                 include_variances=config.INCLUDE_VARIANCES)
+        self.detect = Detect(config=config)
         self.max_output_size = config.MAX_OUTPUT_SIZE
         self.num_classes = config.NUM_CLASSES
         self.config = config
@@ -206,25 +255,19 @@ class MaskED(tf.keras.Model):
 
         if self.config.BACKBONE == 'resnet50':
             inputs = tf.keras.applications.resnet50.preprocess_input(inputs)
-        if self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 
+        elif self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 
                                     'efficientnetlite2', 'efficientnetlite3', 
-                                    'efficientnetlite4']:
+                                    'efficientnetlite3x', 'efficientnetlite4']:
             inputs = (inputs - 127.00) / 128.00
-        if self.config.BACKBONE in ['swin-tiny']:
+        else:
             inputs = self.rescale(inputs)
             inputs = self.norm(inputs)
 
         features = self.backbone(inputs, training=training)
         
         if not self.config.USE_FPN:
-            classification = self.class_net(features)
-            classification = layers.Concatenate(
-                                        axis=1, 
-                                        name='classification')(classification)
-            regression = self.box_net(features)
-            regression = layers.Concatenate(
-                                            axis=1, 
-                                            name='regression')(regression)
+            classification = features['classification']
+            regression = features['regression']
         else:
             # Prediction Head branch
             pred_cls = []

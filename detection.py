@@ -10,18 +10,16 @@ class Detect(object):
     confidence score and locations, as the predicted masks.
     """
 
-    def __init__(self, num_classes, max_output_size, per_class_max_output_size, conf_thresh, nms_thresh, include_variances):
-        self.num_classes = num_classes
+    def __init__(self, config):
         # Parameters used in nms.
-        self.nms_thresh = nms_thresh
+        self.nms_thresh = config.NMS_THRESH
         if nms_thresh <= 0:
             raise ValueError('nms_threshold must be non negative.')
-        self.conf_thresh = conf_thresh
-        self.max_output_size = max_output_size
-        self.per_class_max_output_size = per_class_max_output_size
-        self.include_variances = include_variances
+        self.conf_thresh = config.CONF_THRESH
+        self.max_output_size = config.MAX_OUTPUT_SIZE
+        self.per_class_max_output_size = config.PER_CLASS_MAX_OUTPUT_SIZE
+        self.include_variances = config.INCLUDE_VARIANCES
 
-    @tf.function
     def __call__(self, net_outs, trad_nms=False):
         """
         Args:
@@ -46,13 +44,12 @@ class Detect(object):
         class_p = net_outs['classification']
         anchors = net_outs['priors']  # [cx, cy, w, h] format. Normalized.
 
-        num_class = tf.shape(class_p)[2] - 1
-
-        # Apply softmax to the prediction class
-        #class_p = tf.nn.softmax(class_p, axis=-1)
-
-        # exclude the background class
-        class_p = class_p[:, :, 1:]
+        if self.config.ACTIVATION == 'SOFTMAX':
+            num_class = tf.shape(class_p)[2] - 1
+            # exclude the background class
+            class_p = class_p[:, :, 1:]
+        else:
+            num_class = tf.shape(class_p)[2]
         
         # get the max score class of 27429 predicted boxes
         class_p_max = tf.reduce_max(class_p, axis=-1)

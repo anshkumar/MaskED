@@ -29,12 +29,8 @@ class Config(object):
     # Ratios of anchors at each cell (width/height)
     # A value of 1 represents a square anchor, and 0.5 is a wide anchor
     ANCHOR_RATIOS =  [ [[1, 1/2, 2]] ]*5
-
-    # Length of square anchor side in pixels
-    # ANCHOR_SCALES = [list(i*np.array([2 ** 0, 2 ** (1. / 3.), 2 ** (2. / 3.)])) for i in [32, 64, 128, 256, 512]]
-    # ANCHOR_SCALES = [[24.0, 30.238105197476955, 38.097625247236785], [48.0, 60.47621039495391, 76.19525049447357], [96.0, 120.95242078990782, 152.39050098894714], [192.0, 241.90484157981564, 304.7810019778943], [384.0, 483.8096831596313, 609.5620039557886]]
-    ANCHOR_SCALES = [[32.0,], [64.0,], [128.0,], [256.0], [512.0]]
-    # ANCHOR_SCALES = [[16.0,], [32.0,], [64.0,], [128.0,], [256.0]]
+    NUM_SCALES = 3
+    ANCHOR_SCALE = 4
     ANCHOR_PER_PIX = 3
 
     # Weather to use FPN or BiFPN

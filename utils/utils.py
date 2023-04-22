@@ -248,13 +248,13 @@ def _encode(map_loc, anchors, include_variances=True):
     tf.debugging.assert_non_negative(center_anchors[:, 2] / center_gt[:, 2])
     tf.debugging.assert_non_negative(center_anchors[:, 3] / center_gt[:, 3])
     if include_variances:
-        g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2]
+        g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2] + 1e-8
             ) / variances[1]
-        g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3]
+        g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3] + 1e-8
             ) / variances[1]
     else:
-        g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2])
-        g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3])
+        g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2] + 1e-8)
+        g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3] + 1e-8)
     tf.debugging.assert_all_finite(g_hat_cx, 
         "Ground truth box x encoding NaN/Inf")
     tf.debugging.assert_all_finite(g_hat_cy, 
@@ -310,7 +310,6 @@ def _traditional_nms_v2(boxes, scores, iou_threshold=0.5, score_threshold=0.05, 
     classes = tf.cast(tf.gather(classes, selected_indices), dtype=tf.float32)
     return boxes, classes, scores
 
-#@tf.function
 def _cc_fast_nms(boxes, scores, iou_threshold:float=0.5, top_k:int=15):
     # Cross Class NMS
     # Collapse all the classes into 1 
