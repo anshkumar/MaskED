@@ -1,11 +1,10 @@
 import tensorflow as tf
 
-# from tensorflow.keras.applications import efficientnet_v2
 from tensorflow.keras import layers
 from backbone import efficientnet_v2
 from backbone import efficientnet_lite
 from backbone import spaghettinet
-# from backbone import efficientnet_v2_ws_gn as efficientnet_v2
+from keras_cv_attention_models import swin_transformer_v2 as swin_v2
 from layers.biFPN import build_wBiFPN, build_BiFPN 
 from layers.fpn import build_FPN
 from layers.boxNet import BoxNet
@@ -35,20 +34,35 @@ class MaskED(tf.keras.Model):
                     'efficientnetv2m': efficientnet_v2.EfficientNetV2M, 
                     'efficientnetv2l': efficientnet_v2.EfficientNetV2L,
                     'resnet50': tf.keras.applications.resnet50.ResNet50,
-                    'spaghettinet_edgetpu_s': spaghettinet._spaghettinet_edgetpu_s(),
-                    'spaghettinet_edgetpu_m': spaghettinet._spaghettinet_edgetpu_m(),
-                    'spaghettinet_edgetpu_l': spaghettinet._spaghettinet_edgetpu_l(),
+                    'spaghettinet_edgetpu_s': \
+                                        spaghettinet._spaghettinet_edgetpu_s(),
+                    'spaghettinet_edgetpu_m': \
+                                        spaghettinet._spaghettinet_edgetpu_m(),
+                    'spaghettinet_edgetpu_l': \
+                                        spaghettinet._spaghettinet_edgetpu_l(),
                     'efficientnetlite0': efficientnet_lite.EfficientNetLiteB0,
                     'efficientnetlite1': efficientnet_lite.EfficientNetLiteB1,
                     'efficientnetlite2': efficientnet_lite.EfficientNetLiteB2,
                     'efficientnetlite3': efficientnet_lite.EfficientNetLiteB3,
-                    'efficientnetlite4': efficientnet_lite.EfficientNetLiteB4
+                    'efficientnetlite4': efficientnet_lite.EfficientNetLiteB4,
+                    'swin-tiny' : swin_v2.SwinTransformerV2Tiny_window8,
                     }
-        out_layers = {'efficientnetv2b0': ['block3b_add','block5e_add','block6h_add'],
-                      'efficientnetv2b1': ['block3c_add', 'block5f_add', 'block6h_add'],
-                      'efficientnetv2b2': ['block3c_add', 'block5f_add', 'block6j_add'],
-                      'efficientnetlite4': ['block3d_add', 'block5f_add', 'block6h_add'],
-                      'resnet50': ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
+        out_layers = {'efficientnetv2b0': ['block3b_add','block5e_add',
+                                            'block6h_add'],
+                      'efficientnetv2b1': ['block3c_add', 'block5f_add', 
+                                            'block6h_add'],
+                      'efficientnetv2b2': ['block3c_add', 'block5f_add', 
+                                            'block6j_add'],
+                      'efficientnetlite4': ['block3d_add', 'block5f_add', 
+                                            'block6h_add'],
+                      'efficientnetlite0': ['block3b_add', 'block5c_add', 
+                                            'block6d_add'],
+                      'resnet50': ['conv3_block4_out', 'conv4_block6_out', 
+                                   'conv5_block3_out'],
+                      'swin-tiny' : ['stack2_block2_output', 
+                                     'stack3_block6_output',
+                                     'stack4_block2_output',
+                                     ]
                     }
 
         if config.BACKBONE in ['resnet50']:
@@ -57,18 +71,31 @@ class MaskED(tf.keras.Model):
                             weights='imagenet',
                             input_shape=config.IMAGE_SHAPE,
                         )
-            outputs=[base_model.get_layer(x).output for x in out_layers[config.BACKBONE]]
-        elif config.BACKBONE in ['spaghettinet_edgetpu_s', 'spaghettinet_edgetpu_m', 'spaghettinet_edgetpu_l']:
+            outputs=[base_model.get_layer(x).output \
+                    for x in out_layers[config.BACKBONE]]
+        elif config.BACKBONE in ['spaghettinet_edgetpu_s', 
+                                 'spaghettinet_edgetpu_m', 
+                                 'spaghettinet_edgetpu_l']:
             base_model = spaghettinet.SpaghettiNet(
                 node_specs=backbones[config.BACKBONE],
                 )
-        elif config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 'efficientnetlite2', 'efficientnetlite3', 'efficientnetlite4']:
+        elif config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 
+                                 'efficientnetlite2', 'efficientnetlite3', 
+                                 'efficientnetlite4']:
             base_model = backbones[config.BACKBONE](
                                 include_top=False,
                                 weights='imagenet',
                                 input_shape=config.IMAGE_SHAPE,
                             )
-            outputs=[base_model.get_layer(x).output for x in out_layers[config.BACKBONE]]
+            outputs=[base_model.get_layer(x).output \
+                    for x in out_layers[config.BACKBONE]]
+        elif config.BACKBONE in ['swin-tiny']:
+            base_model = backbones[config.BACKBONE](
+                            pretrained='imagenet',
+                            input_shape=config.IMAGE_SHAPE,
+                        )
+            outputs=[base_model.get_layer(x).output \
+                     for x in out_layers[config.BACKBONE]]
         else:
             base_model = backbones[config.BACKBONE](
                                 include_top=False,
@@ -76,7 +103,8 @@ class MaskED(tf.keras.Model):
                                 input_shape=config.IMAGE_SHAPE,
                                 include_preprocessing=True
                             )
-            outputs=[base_model.get_layer(x).output for x in out_layers[config.BACKBONE]]
+            outputs=[base_model.get_layer(x).output \
+                    for x in out_layers[config.BACKBONE]]
 
         # whether to freeze the convolutional base
         base_model.trainable = config.BASE_MODEL_TRAINABLE 
@@ -111,7 +139,8 @@ class MaskED(tf.keras.Model):
         # https://github.com/tensorflow/tensorflow/issues/4297#issuecomment-\
         # 246080982
         self.feature_map_size = np.array(
-            [list(base_model.get_layer(x).output.shape[1:3]) for x in out_layers[config.BACKBONE]])
+            [list(base_model.get_layer(x).output.shape[1:3]) \
+            for x in out_layers[config.BACKBONE]])
         out_height_p6 = np.ceil(
             (self.feature_map_size[-1, 0]).astype(np.float32) / float(2))
         out_width_p6  = np.ceil(
@@ -123,28 +152,50 @@ class MaskED(tf.keras.Model):
             [[out_height_p6, out_width_p6], [out_height_p7, out_width_p7]]), 
             axis=0)
 
-        anchorobj = anchor.Anchor(img_size_h=config.IMAGE_SHAPE[0],img_size_w=config.IMAGE_SHAPE[1],
-                              feature_map_size=self.feature_map_size,
-                              aspect_ratio=config.ANCHOR_RATIOS,
-                              scale=config.ANCHOR_SCALES)
+        anchorobj = anchor.Anchor(
+                                  img_size_h=config.IMAGE_SHAPE[0],
+                                  img_size_w=config.IMAGE_SHAPE[1],
+                                  feature_map_size=self.feature_map_size,
+                                  aspect_ratio=config.ANCHOR_RATIOS,
+                                  scale=config.ANCHOR_SCALES)
 
         if not config.USE_FPN:
-            self.box_net = BoxNet(config.W_BIFPN, config.D_HEAD, num_anchors=config.ANCHOR_PER_PIX, separable_conv=config.SEPARABLE_CONV, freeze_bn=config.FPN_FREEZE_BN,
-                         detect_quadrangle=config.DETECT_QUADRANGLE, name='box_net')
-            self.class_net = ClassNet(config.W_BIFPN, config.D_HEAD, num_classes=config.NUM_CLASSES+1, num_anchors=config.ANCHOR_PER_PIX,
-                                 separable_conv=config.SEPARABLE_CONV, freeze_bn=config.FPN_FREEZE_BN, 
-                                 activation=config.ACTIVATION, name='class_net')
+            self.box_net = BoxNet(
+                                  config.W_BIFPN, 
+                                  config.D_HEAD, 
+                                  num_anchors=config.ANCHOR_PER_PIX, 
+                                  separable_conv=config.SEPARABLE_CONV, 
+                                  freeze_bn=config.FPN_FREEZE_BN,
+                                  detect_quadrangle=config.DETECT_QUADRANGLE, 
+                                  name='box_net')
+            self.class_net = ClassNet(
+                                      config.W_BIFPN, 
+                                      config.D_HEAD, 
+                                      num_classes=config.NUM_CLASSES+1, 
+                                      num_anchors=config.ANCHOR_PER_PIX,
+                                      separable_conv=config.SEPARABLE_CONV, 
+                                      freeze_bn=config.FPN_FREEZE_BN, 
+                                      activation=config.ACTIVATION, 
+                                      name='class_net')
         else:
             self.predictionHead = PredictionModule(config)
 
         self.num_anchors = anchorobj.num_anchors
         self.priors = anchorobj.anchors
+        self.rescale = layers.Rescaling(scale=1. / 255)
+        self.norm = layers.Normalization(
+              mean=[0.485, 0.456, 0.406],
+              variance=[0.229**2, 0.224**2, 0.225**2],
+              axis=3,
+          )
 
         # post-processing for evaluation
-        self.detect = Detect(config.NUM_CLASSES+1, max_output_size=config.MAX_OUTPUT_SIZE, 
-            per_class_max_output_size=config.PER_CLASS_MAX_OUTPUT_SIZE,
-            conf_thresh=config.CONF_THRESH, nms_thresh=config.NMS_THRESH, 
-            include_variances=config.INCLUDE_VARIANCES)
+        self.detect = Detect(
+                 config.NUM_CLASSES+1, 
+                 max_output_size=config.MAX_OUTPUT_SIZE, 
+                 per_class_max_output_size=config.PER_CLASS_MAX_OUTPUT_SIZE,
+                 conf_thresh=config.CONF_THRESH, nms_thresh=config.NMS_THRESH, 
+                 include_variances=config.INCLUDE_VARIANCES)
         self.max_output_size = config.MAX_OUTPUT_SIZE
         self.num_classes = config.NUM_CLASSES
         self.config = config
@@ -155,16 +206,25 @@ class MaskED(tf.keras.Model):
 
         if self.config.BACKBONE == 'resnet50':
             inputs = tf.keras.applications.resnet50.preprocess_input(inputs)
-        if self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 'efficientnetlite2', 'efficientnetlite3', 'efficientnetlite4']:
+        if self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 
+                                    'efficientnetlite2', 'efficientnetlite3', 
+                                    'efficientnetlite4']:
             inputs = (inputs - 127.00) / 128.00
+        if self.config.BACKBONE in ['swin-tiny']:
+            inputs = self.rescale(inputs)
+            inputs = self.norm(inputs)
 
-        features = self.backbone(inputs, training=False)
+        features = self.backbone(inputs, training=training)
         
         if not self.config.USE_FPN:
             classification = self.class_net(features)
-            classification = layers.Concatenate(axis=1, name='classification')(classification)
+            classification = layers.Concatenate(
+                                        axis=1, 
+                                        name='classification')(classification)
             regression = self.box_net(features)
-            regression = layers.Concatenate(axis=1, name='regression')(regression)
+            regression = layers.Concatenate(
+                                            axis=1, 
+                                            name='regression')(regression)
         else:
             # Prediction Head branch
             pred_cls = []
@@ -188,19 +248,24 @@ class MaskED(tf.keras.Model):
         pred.update(self.detect(pred, trad_nms=self.config.TRAD_NMS))
 
         if self.config.PREDICT_MASK:
-            # Use features from C3 to C5 only, as shown in Ablation study in CenterMask
+            mask_feats = features[:-(self.config.TOTAL_FEAT_LAYERS - \
+                                     self.config.MAX_MASK_FEAT_LAYER)]
+            # Use features from C3 to C5 only, as shown in Ablation study in 
+            # CenterMask
             if training:
-                masks = self.mask_head(gt_boxes,
-                                features[:-(self.config.TOTAL_FEAT_LAYERS-self.config.MAX_MASK_FEAT_LAYER)],
-                                self.num_classes,
-                                self.config,
-                                training)
+                masks = self.mask_head(
+                                       gt_boxes,
+                                       mask_feats,
+                                       self.num_classes,
+                                       self.config,
+                                       training)
             else:
-                masks = self.mask_head(pred['detection_boxes'],
-                                features[:-(self.config.TOTAL_FEAT_LAYERS-self.config.MAX_MASK_FEAT_LAYER)],
-                                self.num_classes,
-                                self.config,
-                                training)
+                masks = self.mask_head(
+                                       pred['detection_boxes'],
+                                       mask_feats,
+                                       self.num_classes,
+                                       self.config,
+                                       training)
             pred.update({'detection_masks': masks})
 
         return pred

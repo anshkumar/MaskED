@@ -16,13 +16,14 @@ class Config(object):
     #         efficientnetv2s, efficientnetv2m, efficientnetv2l,
     #         resnet50
     #         efficientnetlite0, efficientnetlite1, efficientnetlite2, efficientnetlite3, efficientnetlite4
-    BACKBONE = "efficientnetlite4"
+    #         swin-tiny
+    BACKBONE = "swin-tiny"
     BASE_MODEL_TRAINABLE = True
     FREEZE_BACKBONE_BN = False # False for bbox training. True for fine-tuning mask.
 
     BATCH_SIZE = 16 # Batch size per GPU
     # (Height, Width, Channels)
-    # [512, 640, 768, 896, 1024, 1280, 1408]
+    # [384, 512, 640, 768, 896, 1024, 1280, 1408]
     IMAGE_SHAPE = [512, 512, 3]
 
     # Ratios of anchors at each cell (width/height)
@@ -33,6 +34,7 @@ class Config(object):
     # ANCHOR_SCALES = [list(i*np.array([2 ** 0, 2 ** (1. / 3.), 2 ** (2. / 3.)])) for i in [32, 64, 128, 256, 512]]
     # ANCHOR_SCALES = [[24.0, 30.238105197476955, 38.097625247236785], [48.0, 60.47621039495391, 76.19525049447357], [96.0, 120.95242078990782, 152.39050098894714], [192.0, 241.90484157981564, 304.7810019778943], [384.0, 483.8096831596313, 609.5620039557886]]
     ANCHOR_SCALES = [[32.0,], [64.0,], [128.0,], [256.0], [512.0]]
+    # ANCHOR_SCALES = [[16.0,], [32.0,], [64.0,], [128.0,], [256.0]]
     ANCHOR_PER_PIX = 3
 
     # Weather to use FPN or BiFPN
@@ -96,8 +98,8 @@ class Config(object):
     # Loss weights for more precise optimization.
     LOSS_WEIGHTS = {
         "loss_weight_cls": 1.,
-        "loss_weight_box": 1.,
-        "loss_weight_mask": 1.,
+        "loss_weight_box": 50.,
+        "loss_weight_mask": 2.,
         "loss_weight_mask_iou": 1.,
     }
     INCLUDE_VARIANCES = False # Include variance to bounding boxes or not.
@@ -116,16 +118,18 @@ class Config(object):
     OPTIMIZER = 'SGD'
     # Allowed ['PiecewiseConstantDecay', 'CosineDecay']
     LEARNINGRATESCHEDULE = 'CosineDecay' 
-    LEARNING_RATE = 0.008 # 0.04 for batch of 16 
-    N_WARMUP_STEPS = 7706
+    LEARNING_RATE = 0.04 # 0.04 for batch of 16 
+    STEPS_PER_EPOCH = 7706
+    N_WARMUP_STEPS = STEPS_PER_EPOCH
     WARMUP_LR = 0.0
     LEARNING_MOMENTUM = 0.9
     LR_SCHEDULE = False
     TOTAL_EPOCHS = 55 # 12 epoch for fine-tuning mask. 110 epochs for bbox training.
-    LR_TOTAL_STEPS = 7706*55
+    LR_TOTAL_STEPS = STEPS_PER_EPOCH*55
 
     # Weight decay regularization
     WEIGHT_DECAY = 5*1e-4
+    WEIGHT_DECAY_BN_GAMMA_BETA = False
 
     # Gradient norm clipping or AGC (Will use either one of them.)
     GRADIENT_CLIP_NORM = 10
@@ -147,6 +151,7 @@ class Config(object):
         "SQUARE_CROP_BY_SCALE"
     '''
     AUGMENTATIONS = [
+        "PHOTOMETRIC",
         "SQUARE_CROP_BY_SCALE", 
         "HORIZONTAL_FLIP"
     ]

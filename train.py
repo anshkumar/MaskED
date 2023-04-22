@@ -124,7 +124,7 @@ def unitwise_norm(x):
     if len(x.get_shape()) <= 1:  # Scalars and vectors
         axis = None
         keepdims = False
-    elif len(x.get_shape()) in [2, 3]:  # Linear layers of shape IO or multihead linear
+    elif len(x.get_shape()) in [2, 3]:
         axis = 0
         keepdims = True
     elif len(x.get_shape()) == 4:  # Conv kernels of shape HWIO
@@ -148,8 +148,9 @@ def adaptive_clip_grad(parameters, gradients, clip_factor=0.01,
     return new_grads
 
 # add weight decay
-# Skip gamma and beta weights of batch normalization layers.
-def add_weight_decay(model, weight_decay):
+def add_weight_decay(model, config):
+    weight_decay = config.WEIGHT_DECAY
+    
     # https://github.com/keras-team/keras/issues/12053
     if (weight_decay is None) or (weight_decay == 0.0):
         return
@@ -161,10 +162,18 @@ def add_weight_decay(model, weight_decay):
                 add_decay_loss(layer, factor)
         else:
             for param in m.trainable_weights:
-              # if 'gamma' not in param.name and 'beta' not in param.name:
+              # The effect of weight_regularizer on gamma and beta depeds 
+              # significantly on the network of choice.
+              # Read the paper: https://arxiv.org/abs/1906.03548
+              if config.WEIGHT_DECAY_BN_GAMMA_BETA:
                 with tf.keras.backend.name_scope('weight_regularizer'):
                     regularizer = lambda: tf.keras.regularizers.l2(factor)(param)
                     m.add_loss(regularizer)
+              else:
+                if 'gamma' not in param.name and 'beta' not in param.name:
+                  with tf.keras.backend.name_scope('weight_regularizer'):
+                      regularizer = lambda: tf.keras.regularizers.l2(factor)(param)
+                      m.add_loss(regularizer)
 
     # weight decay and l2 regularization differs by a factor of 2
     # because the weights are updated as w := w - l_r * L(w,x) - 2 * l_r * l2 * w
@@ -179,69 +188,90 @@ def get_optimizer(config):
     if config.LEARNINGRATESCHEDULE == 'PiecewiseConstantDecay':
       logging.info("Using Piecewise Constant Decay Learning Rate")
       lr_schedule = tf.optimizers.schedules.PiecewiseConstantDecay(
-          [config.N_WARMUP_STEPS, int(0.35*config.LR_TOTAL_STEPS), int(0.75*config.LR_TOTAL_STEPS), int(0.875*config.LR_TOTAL_STEPS), int(0.9375*config.LR_TOTAL_STEPS)], 
-          [config.WARMUP_LR, config.LEARNING_RATE, 0.1*config.LEARNING_RATE, 0.01*config.LEARNING_RATE, 0.001*config.LEARNING_RATE, 0.0001*config.LEARNING_RATE])
+                                        [config.N_WARMUP_STEPS, 
+                                        int(0.35*config.LR_TOTAL_STEPS), 
+                                        int(0.75*config.LR_TOTAL_STEPS), 
+                                        int(0.875*config.LR_TOTAL_STEPS), 
+                                        int(0.9375*config.LR_TOTAL_STEPS)],
+
+                                        [config.WARMUP_LR, config.LEARNING_RATE, 
+                                        0.1*config.LEARNING_RATE, 
+                                        0.01*config.LEARNING_RATE, 
+                                        0.001*config.LEARNING_RATE, 
+                                        0.0001*config.LEARNING_RATE])
     else:
       logging.info("Using Cosine Decay Learning Rate")
       lr_schedule = learning_rate_schedule.LearningRateSchedule(
-        warmup_steps=config.N_WARMUP_STEPS, 
-        warmup_lr=config.WARMUP_LR,
-        initial_lr=config.LEARNING_RATE, 
-        total_steps=config.LR_TOTAL_STEPS)
+                                            warmup_steps=config.N_WARMUP_STEPS, 
+                                            warmup_lr=config.WARMUP_LR,
+                                            initial_lr=config.LEARNING_RATE, 
+                                            total_steps=config.LR_TOTAL_STEPS)
+
     if config.OPTIMIZER == 'SGD':
       logging.info("Using SGD optimizer")
       if config.GRADIENT_CLIP_NORM is not None:
-        optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=config.LEARNING_MOMENTUM, clipnorm=config.GRADIENT_CLIP_NORM, nesterov=True)
+        optimizer = tf.keras.optimizers.experimental.SGD(
+                                            learning_rate=lr_schedule, 
+                                            momentum=config.LEARNING_MOMENTUM, 
+                                            clipnorm=config.GRADIENT_CLIP_NORM, 
+                                            nesterov=True)
       else:
-        optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=config.LEARNING_MOMENTUM)
+        optimizer = tf.keras.optimizers.experimental.SGD(
+                                              learning_rate=lr_schedule, 
+                                              momentum=config.LEARNING_MOMENTUM)
     elif config.OPTIMIZER == 'Adam':
       logging.info("Using Adam optimizer")
       if config.GRADIENT_CLIP_NORM is not None:
         optimizer = tf.keras.optimizers.Adam(
-          learning_rate=lr_schedule, clipnorm=config.GRADIENT_CLIP_NORM)
+                                            learning_rate=lr_schedule, 
+                                            clipnorm=config.GRADIENT_CLIP_NORM)
       else:
         optimizer = tf.keras.optimizers.Adam(
-          learning_rate=lr_schedule)
+                                            learning_rate=lr_schedule)
     elif config.OPTIMIZER == 'AdamW':
       logging.info("Using AdamW optimizer")
       if config.GRADIENT_CLIP_NORM is not None:
         optimizer = tfa.optimizers.AdamW(
-          learning_rate=lr_schedule, 
-          weight_decay=config.WEIGHT_DECAY, clipnorm=config.GRADIENT_CLIP_NORM)
+                                        learning_rate=lr_schedule, 
+                                        weight_decay=config.WEIGHT_DECAY, 
+                                        clipnorm=config.GRADIENT_CLIP_NORM)
       else:
         optimizer = tfa.optimizers.AdamW(
-          learning_rate=lr_schedule,
-          weight_decay=config.WEIGHT_DECAY)
+                                        learning_rate=lr_schedule,
+                                        weight_decay=config.WEIGHT_DECAY)
     elif config.OPTIMIZER == 'Adafactor':
       logging.info("Using Adafactor optimizer")
       if config.GRADIENT_CLIP_NORM is not None:
         optimizer = tf.keras.optimizers.Adafactor(
-          learning_rate=lr_schedule, 
-          weight_decay=config.WEIGHT_DECAY, 
-          clipnorm=config.GRADIENT_CLIP_NORM,
-          ema_momentum=config.LEARNING_MOMENTUM)
+                                          learning_rate=lr_schedule, 
+                                          weight_decay=config.WEIGHT_DECAY, 
+                                          clipnorm=config.GRADIENT_CLIP_NORM,
+                                          ema_momentum=config.LEARNING_MOMENTUM)
       else:
         optimizer = tfa.optimizers.AdamW(
-          learning_rate=lr_schedule,
-          weight_decay=config.WEIGHT_DECAY)
+                                        learning_rate=lr_schedule,
+                                        weight_decay=config.WEIGHT_DECAY)
     elif config.OPTIMIZER == 'AdaBelief':
       logging.info("Using AdaBelief optimizer")
       optimizer = tfa.optimizers.AdaBelief(
-          lr=config.LEARNING_RATE,
-          total_steps=config.LR_TOTAL_STEPS,
-          warmup_proportion=config.N_WARMUP_STEPS/config.LR_TOTAL_STEPS,
-          min_lr=config.LEARNING_RATE*config.LEARNING_RATE,
-          rectify=True)
+                  lr=config.LEARNING_RATE,
+                  total_steps=config.LR_TOTAL_STEPS,
+                  warmup_proportion=config.N_WARMUP_STEPS/config.LR_TOTAL_STEPS,
+                  min_lr=config.LEARNING_RATE*config.LEARNING_RATE,
+                  rectify=True)
 
     return optimizer
 
 def get_checkpoint_manager(model, optimizer):
     # setup checkpoints manager
     checkpoint = tf.train.Checkpoint(
-      step=tf.Variable(1), optimizer=optimizer, model=model)
+                                    step=tf.Variable(1), 
+                                    optimizer=optimizer, 
+                                    model=model)
     manager = tf.train.CheckpointManager(
-        checkpoint, directory=FLAGS.checkpoints_dir, max_to_keep=10
-    )
+                                        checkpoint, 
+                                        directory=FLAGS.checkpoints_dir, 
+                                        max_to_keep=10)
     # restore from latest checkpoint and iteration
     status = checkpoint.restore(manager.latest_checkpoint)
 
@@ -250,7 +280,7 @@ def get_checkpoint_manager(model, optimizer):
     else:
         if FLAGS.pretrained_checkpoints != '':
           feature_extractor_model = tf.train.Checkpoint(
-            backbone=model.backbone)
+                                                        backbone=model.backbone)
           ckpt = tf.train.Checkpoint(model=feature_extractor_model)
           ckpt.restore(FLAGS.pretrained_checkpoints).\
             expect_partial().assert_existing_objects_matched()
@@ -261,7 +291,8 @@ def get_checkpoint_manager(model, optimizer):
     return checkpoint, manager
 
 train_tic = time.time()
-def update_train_losses(train_summary_writer, epoch, total_epochs, iterations, metrics, decayed_lr):
+def update_train_losses(train_summary_writer, epoch, total_epochs, iterations, 
+                        metrics, decayed_lr):
     global train_tic
     with train_summary_writer.as_default():
       with tf.name_scope("loss_train"):
@@ -282,8 +313,8 @@ def update_train_losses(train_summary_writer, epoch, total_epochs, iterations, m
 
     if iterations and iterations % FLAGS.print_interval == 0:
         logging.info(
-            ("[Epoch {}/{}] Iteration {}, LR: {}, Total Loss: {:.4f}, B: {:.4f},  "
-              "C: {:.4f}, M: {:.4f}, I: {:.4f}, "
+            ("[Epoch {}/{}] Iteration {}, LR: {}, Total Loss: {:.4f}, "
+              "B: {:.4f}, C: {:.4f}, M: {:.4f}, I: {:.4f}, "
               "({:.1f} seconds)").format(
             epoch,
             total_epochs,
@@ -303,7 +334,8 @@ def update_train_losses(train_summary_writer, epoch, total_epochs, iterations, m
         metrics.mask_iou.reset_states()
         train_tic = time.time()
         
-def update_val_losses(test_summary_writer, iterations, metrics, coco_metrics, config):
+def update_val_losses(test_summary_writer, iterations, metrics, coco_metrics, 
+                      config):
     if config.PREDICT_MASK:
         metrics.precision_mAP.update_state(
           coco_metrics['DetectionMasks_Precision/mAP'])
@@ -478,7 +510,8 @@ def draw_contours(image, num, boxes, classes, scores, masks, config, is_gt):
     cv2.rectangle(image, (_x1, _y1), (_x2, _y2), (0, 255, 0), 2)
     draw_label(image, (_x1, _y1), str(_class)+': '+str(round(scores[i],2)), )
     
-def add_to_coco_evaluator(_idx, valid_image, valid_labels, output, config , coco_evaluator, _h,_w):
+def add_to_coco_evaluator(_idx, valid_image, valid_labels, output, config , 
+                          coco_evaluator, _h,_w):
     gt_image = valid_image.numpy().copy()
     image_id = int(time.time()*1000000)
     gt_num_box = valid_labels['num_obj'][_idx].numpy()
@@ -496,7 +529,8 @@ def add_to_coco_evaluator(_idx, valid_image, valid_labels, output, config , coco
             standard_fields.InputDataFields.groundtruth_classes: gt_classes,
             standard_fields.InputDataFields.groundtruth_instance_masks: gt_masks
           })
-      draw_contours(gt_image, gt_num_box, gt_boxes, gt_classes, gt_classes*0+1, gt_masks, config, True)
+      draw_contours(gt_image, gt_num_box, gt_boxes, gt_classes, gt_classes*0+1, 
+                    gt_masks, config, True)
     else:
       coco_evaluator.add_single_ground_truth_image_info(
           image_id='image'+str(image_id),
@@ -504,10 +538,12 @@ def add_to_coco_evaluator(_idx, valid_image, valid_labels, output, config , coco
             standard_fields.InputDataFields.groundtruth_boxes: gt_boxes,
             standard_fields.InputDataFields.groundtruth_classes: gt_classes,
           })
-      draw_contours(gt_image, gt_num_box, gt_boxes, gt_classes, gt_classes*0+1, None, config, True)
+      draw_contours(gt_image, gt_num_box, gt_boxes, gt_classes, gt_classes*0+1, 
+                    None, config, True)
 
     det_image = valid_image.numpy().copy()
-    det_num = np.count_nonzero(output['detection_scores'][_idx].numpy()> config.CONF_THRESH)
+    det_num = np.count_nonzero(
+      output['detection_scores'][_idx].numpy() > config.CONF_THRESH)
     det_boxes = output['detection_boxes'][_idx][:det_num]
     det_boxes = det_boxes.numpy()*np.array([_h,_w,_h,_w])
     det_scores = output['detection_scores'][_idx][:det_num].numpy()
@@ -531,21 +567,27 @@ def add_to_coco_evaluator(_idx, valid_image, valid_labels, output, config , coco
       coco_evaluator.add_single_detected_image_info(
           image_id='image'+str(image_id),
           detections_dict={
-              standard_fields.DetectionResultFields.detection_boxes: det_boxes,
-              standard_fields.DetectionResultFields.detection_scores: det_scores,
-              standard_fields.DetectionResultFields.detection_classes: det_classes,
-              standard_fields.DetectionResultFields.detection_masks: det_masked_image
+            standard_fields.DetectionResultFields.detection_boxes: det_boxes,
+            standard_fields.DetectionResultFields.detection_scores: det_scores,
+            standard_fields.DetectionResultFields.detection_classes: \
+                                                                    det_classes,
+            standard_fields.DetectionResultFields.detection_masks: \
+                                                                det_masked_image
           })
-      draw_contours(det_image, det_num, det_boxes, det_classes, det_scores, det_masks, config, False)
+      draw_contours(det_image, det_num, det_boxes, det_classes, det_scores, 
+                    det_masks, config, False)
     else:
       coco_evaluator.add_single_detected_image_info(
           image_id='image'+str(image_id),
           detections_dict={
               standard_fields.DetectionResultFields.detection_boxes: det_boxes,
-              standard_fields.DetectionResultFields.detection_scores: det_scores,
-              standard_fields.DetectionResultFields.detection_classes: det_classes,
+              standard_fields.DetectionResultFields.detection_scores: \
+                                                                     det_scores,
+              standard_fields.DetectionResultFields.detection_classes: \
+                                                                    det_classes,
           })
-      draw_contours(det_image, det_num, det_boxes, det_classes, det_scores, None, config, False)
+      draw_contours(det_image, det_num, det_boxes, det_classes, det_scores, 
+                    None, config, False)
 
     return np.hstack([det_image, gt_image])
 
@@ -555,16 +597,17 @@ def init():
       try:
         for i in len(physical_devices):
           tf.config.experimental.set_memory_growth(physical_devices[i], True)
-          # tf.config.experimental.set_virtual_device_configuration(physical_devices[i], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=19240)])
       except:
-              print("Invalid device or cannot modify virtual devices once initialized.")
-              pass
+        print("Invalid device or cannot modify virtual devices once "
+              "initialized.")
+        pass
     else:
       try:
-              tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
       except:
-              print("Invalid device or cannot modify virtual devices once initialized.")
-              pass
+        print("Invalid device or cannot modify virtual devices once "
+              "initialized.")
+        pass
 
 # set up Grappler for graph optimization
 # Ref: https://www.tensorflow.org/guide/graph_optimization
@@ -588,7 +631,7 @@ def main(argv):
         mirrored_strategy = tf.distribute.MirroredStrategy()
         with mirrored_strategy.scope():
             model = MaskED(config)
-            add_weight_decay(model, config.WEIGHT_DECAY)   
+            add_weight_decay(model, config) 
             optimizer = get_optimizer(config)
             checkpoint, manager = get_checkpoint_manager(model, optimizer)
         BATCH_SIZE_PER_REPLICA = config.BATCH_SIZE
@@ -596,7 +639,7 @@ def main(argv):
                         mirrored_strategy.num_replicas_in_sync)
     else:
         model = MaskED(config)
-        add_weight_decay(model, config.WEIGHT_DECAY)   
+        add_weight_decay(model, config) 
         optimizer = get_optimizer(config)
         checkpoint, manager = get_checkpoint_manager(model, optimizer)
 
@@ -611,7 +654,8 @@ def main(argv):
       batch_size=global_batch_size if FLAGS.multi_gpu else config.BATCH_SIZE,
       subset='train')
     if FLAGS.multi_gpu:
-        train_dataset_dist = mirrored_strategy.experimental_distribute_dataset(train_dataset)
+        train_dataset_dist = mirrored_strategy.experimental_distribute_dataset(
+                                                                  train_dataset)
 
     logging.info("Creating the validation dataloader from: %s..." % \
       FLAGS.tfrecord_val_dir)
@@ -640,10 +684,10 @@ def main(argv):
     # COCO evalator for showing MAP
     if config.PREDICT_MASK:
       coco_evaluator = coco_evaluation.CocoMaskEvaluator(
-        _get_categories_list(FLAGS.label_map))
+                                          _get_categories_list(FLAGS.label_map))
     else:
       coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
-        _get_categories_list(FLAGS.label_map))
+                                          _get_categories_list(FLAGS.label_map))
 
     metrics = coco_evaluation.Matric()
     best_val = 1e10
@@ -651,11 +695,13 @@ def main(argv):
 
     @tf.function
     def val_step(valid_images, valid_labels):
-        outputs = model([valid_images, valid_labels['boxes_norm']], training=False)
+        outputs = model([valid_images, valid_labels['boxes_norm']], 
+                        training=False)
         valid_loc_loss, valid_conf_loss, valid_mask_loss, \
                   valid_mask_iou_loss = \
                   criterion(model, outputs, valid_labels, config.NUM_CLASSES+1)
-        return outputs, valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_mask_iou_loss
+        return outputs, valid_loc_loss, valid_conf_loss, valid_mask_loss, \
+               valid_mask_iou_loss
 
     @tf.function
     def train_step(image, labels):
@@ -670,49 +716,72 @@ def main(argv):
                 output = model([image, labels['boxes_norm']], training=True)
 
                 loc_loss, conf_loss, mask_loss, mask_iou_loss, \
-                    = criterion(model, output, labels, config.NUM_CLASSES+1, image)
+                    = criterion(model, output, labels, config.NUM_CLASSES+1, 
+                                image)
 
                 if FLAGS.multi_gpu:
-                    loc_loss = tf.nn.compute_average_loss(loc_loss, global_batch_size=global_batch_size)
-                    conf_loss = tf.nn.compute_average_loss(conf_loss, global_batch_size=global_batch_size)
-                    mask_loss = tf.nn.compute_average_loss(mask_loss, global_batch_size=global_batch_size)
-                    mask_iou_loss = tf.nn.compute_average_loss(mask_iou_loss, global_batch_size=global_batch_size) 
-                    total_loss = loc_loss + conf_loss + mask_loss + mask_iou_loss
+                    loc_loss = tf.nn.compute_average_loss(
+                                            loc_loss, 
+                                            global_batch_size=global_batch_size)
+                    conf_loss = tf.nn.compute_average_loss(
+                                            conf_loss, 
+                                            global_batch_size=global_batch_size)
+                    mask_loss = tf.nn.compute_average_loss(
+                                            mask_loss, 
+                                            global_batch_size=global_batch_size)
+                    mask_iou_loss = tf.nn.compute_average_loss(
+                                            mask_iou_loss, 
+                                            global_batch_size=global_batch_size) 
+                    total_loss = (loc_loss + conf_loss + mask_loss + \
+                                  mask_iou_loss)
                 else:
-                    total_loss = tf.reduce_sum(loc_loss + conf_loss + mask_loss + mask_iou_loss)
+                    total_loss = tf.reduce_sum(loc_loss + conf_loss + \
+                                               mask_loss + mask_iou_loss)
                     loc_loss = tf.reduce_sum(loc_loss)
                     conf_loss = tf.reduce_sum(conf_loss)
                     mask_loss = tf.reduce_sum(mask_loss)
                     mask_iou_loss = tf.reduce_sum(mask_iou_loss)
             grads = tape.gradient(total_loss, model.trainable_weights)
             if config.USE_AGC:
-              agc_gradients = adaptive_clip_grad(model.trainable_weights, grads, 
-                                                  clip_factor=clip_factor, eps=eps)
-              optimizer.apply_gradients(zip(agc_gradients, model.trainable_weights))
+              agc_gradients = adaptive_clip_grad(
+                                                model.trainable_weights, 
+                                                grads, 
+                                                clip_factor=clip_factor, 
+                                                eps=eps)
+              optimizer.apply_gradients(zip(agc_gradients, 
+                                            model.trainable_weights))
             else:
               optimizer.apply_gradients(zip(grads, model.trainable_weights))
             return (loc_loss, conf_loss, mask_loss, mask_iou_loss, total_loss)
 
     @tf.function
     def distributed_train_step(image, labels):
-        per_replica_losses = mirrored_strategy.run(train_step, args=(image, labels,))
-        return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
-                         axis=None)
+        per_replica_losses = mirrored_strategy.run(
+                                                  train_step, 
+                                                  args=(image, labels,))
+        return mirrored_strategy.reduce(
+                                        tf.distribute.ReduceOp.SUM, 
+                                        per_replica_losses,
+                                        axis=None)
 
     iterations = init_epoch * config.STEPS_PER_EPOCH
     for epoch in range(init_epoch, config.TOTAL_EPOCHS):
         for image, labels in train_dataset:
             iterations += 1
             if FLAGS.multi_gpu:
-                loc_loss, conf_loss, mask_loss, mask_iou_loss, total_loss = distributed_train_step(image, labels)
+                loc_loss, conf_loss, mask_loss, mask_iou_loss, total_loss = \
+                    distributed_train_step(image, labels)
             else:
-                loc_loss, conf_loss, mask_loss, mask_iou_loss, total_loss = train_step(image, labels)
+                loc_loss, conf_loss, mask_loss, mask_iou_loss, total_loss = \
+                    train_step(image, labels)
             metrics.train_loss.update_state(total_loss)
             metrics.loc.update_state(loc_loss)
             metrics.conf.update_state(conf_loss)
             metrics.mask.update_state(mask_loss)
             metrics.mask_iou.update_state(mask_iou_loss)
-            update_train_losses(train_summary_writer, epoch, config.TOTAL_EPOCHS, iterations, metrics, optimizer.lr.numpy())
+            update_train_losses(train_summary_writer, epoch, 
+                                config.TOTAL_EPOCHS, iterations, metrics, 
+                                optimizer.lr.numpy())
 
         logging.info("1 epoch completed.")
         checkpoint.step.assign_add(1)
@@ -721,7 +790,7 @@ def main(argv):
             save_path = manager.save()
 
             logging.info("Saved checkpoint for epoch {}: {}".format(
-              int(epoch), save_path))
+                        int(epoch), save_path))
 
             # validation
             debug_images = []
@@ -729,7 +798,8 @@ def main(argv):
                 outputs, valid_loc_loss, valid_conf_loss, valid_mask_loss, \
                     valid_mask_iou_loss = val_step(valid_images, valid_labels)
 
-                valid_total_loss = sum(valid_loc_loss + valid_conf_loss + valid_mask_loss + valid_mask_iou_loss)
+                valid_total_loss = sum(valid_loc_loss + valid_conf_loss + \
+                                       valid_mask_loss + valid_mask_iou_loss)
                 metrics.valid_loss.update_state(valid_total_loss)
                 metrics.v_loc.update_state(valid_loc_loss)
                 metrics.v_conf.update_state(valid_conf_loss)
@@ -737,15 +807,33 @@ def main(argv):
                 metrics.v_mask_iou.update_state(valid_mask_iou_loss)
                   
                 for _idx, valid_image in enumerate(valid_images):
-                  debug_image = add_to_coco_evaluator(_idx, tf.cast(valid_image, dtype=tf.uint8), valid_labels, outputs, config , coco_evaluator, valid_image.shape[0], valid_image.shape[1])
+                  debug_image = add_to_coco_evaluator(
+                                                      _idx, 
+                                                      tf.cast(valid_image, 
+                                                              dtype=tf.uint8), 
+                                                      valid_labels, 
+                                                      outputs, 
+                                                      config, 
+                                                      coco_evaluator, 
+                                                      valid_image.shape[0], 
+                                                      valid_image.shape[1])
                   debug_images.append(debug_image)
 
             coco_metrics = coco_evaluator.evaluate()
             with test_summary_writer.as_default():
               # Don't forget to reshape.
-              tf.summary.image("Images", np.array(debug_images)[0:config.MAX_DISPLAY_IMAGES], max_outputs=config.MAX_DISPLAY_IMAGES, step=iterations)
+              tf.summary.image(
+                              "Images", 
+                              np.array(debug_images)[0:config.MAX_DISPLAY_IMAGES], 
+                              max_outputs=config.MAX_DISPLAY_IMAGES, 
+                              step=iterations)
 
-            update_val_losses(test_summary_writer, iterations, metrics, coco_metrics, config)
+            update_val_losses(
+                              test_summary_writer, 
+                              iterations, 
+                              metrics, 
+                              coco_metrics, 
+                              config)
             coco_evaluator.clear()
             metrics.reset()
 

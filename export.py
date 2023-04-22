@@ -22,6 +22,8 @@ class Model(MaskED):
     def call(self, inputs, training=False):
         if self.config.BACKBONE == 'resnet50':
             inputs = tf.keras.applications.resnet50.preprocess_input(inputs)
+        if self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 'efficientnetlite2', 'efficientnetlite3', 'efficientnetlite4']:
+            inputs = (inputs - 127.00) / 128.00
         features = self.backbone(inputs, training=False)
         if not self.config.USE_FPN:
             classification = self.class_net(features)
@@ -47,7 +49,7 @@ class Model(MaskED):
         pred.update(self.detect(pred))
         if self.config.PREDICT_MASK:
             masks = self.mask_head(pred['detection_boxes'],
-                            features[:-2],
+                            features[:-(self.config.TOTAL_FEAT_LAYERS-self.config.MAX_MASK_FEAT_LAYER)],
                             self.num_classes,
                             self.config,
                             training)
