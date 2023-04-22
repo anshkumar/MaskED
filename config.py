@@ -11,12 +11,13 @@ class Config(object):
     that need to be changed.
     """
     # Backbone network architecture
-    # Supported values are: efficientnetv2b0, efficientnetv2b1, efficientnetv2b2,
-    #         efficientnetv2b3, efficientnetv2b4, efficientnetv2b5, efficientnetv2b6
-    #         efficientnetv2s, efficientnetv2m, efficientnetv2l,
-    #         resnet50
-    #         efficientnetlite0, efficientnetlite1, efficientnetlite2, efficientnetlite3, efficientnetlite4
-    #         swin-tiny
+    # Supported values are: 
+    #    efficientnetv1_b1, efficientnetv1_b2, efficientnetv1_b3, efficientnetv1_b4
+    #    efficientnetv1_b5, efficientnetv1_b6, efficientnetv1_b7, efficientnetv1_b7x
+    #    efficientnetv1_lite0, efficientnetv1_lite1, efficientnetv1_lite2
+    #    efficientnetv1_lite3, efficientnetv1_lite3x, efficientnetv1_lite4
+    #    resnet50
+    #    swin-tiny
     BACKBONE = "efficientnetv1_b0"
     BASE_MODEL_TRAINABLE = True
     FREEZE_BACKBONE_BN = False # False for bbox training. True for fine-tuning mask.
