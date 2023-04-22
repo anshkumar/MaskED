@@ -12,6 +12,7 @@ assert tf.__version__.startswith('2')
 from detection import Detect
 from data import anchor
 import numpy as np
+import math
 
 class MaskED(tf.keras.Model):
     """
@@ -24,80 +25,80 @@ class MaskED(tf.keras.Model):
         super(MaskED, self).__init__()
 
         backbones = {
-                    "efficientdet_b0": efficientnet.EfficientNetV1B0,
-                    "efficientdet_b1": efficientnet.EfficientNetV1B1,
-                    "efficientdet_b2": efficientnet.EfficientNetV1B2,
-                    "efficientdet_b3": efficientnet.EfficientNetV1B3,
-                    "efficientdet_b4": efficientnet.EfficientNetV1B4,
-                    "efficientdet_b5": efficientnet.EfficientNetV1B5,
-                    "efficientdet_b6": efficientnet.EfficientNetV1B6,
-                    "efficientdet_b7": efficientnet.EfficientNetV1B6,
-                    "efficientdet_b7x": efficientnet.EfficientNetV1B7,
-                    "efficientdet_lite0": efficientnet.EfficientNetV1Lite0,
-                    "efficientdet_lite1": efficientnet.EfficientNetV1Lite1,
-                    "efficientdet_lite2": efficientnet.EfficientNetV1Lite2,
-                    "efficientdet_lite3": efficientnet.EfficientNetV1Lite3,
-                    "efficientdet_lite3x": efficientnet.EfficientNetV1Lite3,
-                    "efficientdet_lite4": efficientnet.EfficientNetV1Lite4,
+                    "efficientnetv1_b0": efficientnet.EfficientNetV1B0,
+                    "efficientnetv1_b1": efficientnet.EfficientNetV1B1,
+                    "efficientnetv1_b2": efficientnet.EfficientNetV1B2,
+                    "efficientnetv1_b3": efficientnet.EfficientNetV1B3,
+                    "efficientnetv1_b4": efficientnet.EfficientNetV1B4,
+                    "efficientnetv1_b5": efficientnet.EfficientNetV1B5,
+                    "efficientnetv1_b6": efficientnet.EfficientNetV1B6,
+                    "efficientnetv1_b7": efficientnet.EfficientNetV1B7,
+                    "efficientnetv1_b7x": efficientnet.EfficientNetV1B7,
+                    "efficientnetv1_lite0": efficientnet.EfficientNetV1Lite0,
+                    "efficientnetv1_lite1": efficientnet.EfficientNetV1Lite1,
+                    "efficientnetv1_lite2": efficientnet.EfficientNetV1Lite2,
+                    "efficientnetv1_lite3": efficientnet.EfficientNetV1Lite3,
+                    "efficientnetv1_lite3x": efficientnet.EfficientNetV1Lite3,
+                    "efficientnetv1_lite4": efficientnet.EfficientNetV1Lite4,
                     'swin-tiny' : swin_v2.SwinTransformerV2Tiny_window8,
                     }
-        out_layers = {'efficientnetv2b0': [
+        out_layers = {'efficientnetv1_b0': [
                                             "stack_2_block1_output", 
                                             "stack_4_block2_output", 
                                             "stack_6_block0_output"],
-                      'efficientnetv2b1': [
+                      'efficientnetv1_b1': [
                                             "stack_2_block2_output", 
                                             "stack_4_block3_output", 
                                             "stack_6_block1_output"],
-                      'efficientnetv2b2': [
+                      'efficientnetv1_b2': [
                                             "stack_2_block2_output", 
                                             "stack_4_block3_output", 
                                             "stack_6_block1_output"],
-                      'efficientnetv2b3': [
+                      'efficientnetv1_b3': [
                                             "stack_2_block2_output", 
                                             "stack_4_block4_output", 
                                             "stack_6_block1_output"],
-                      'efficientnetv2b4': [
+                      'efficientnetv1_b4': [
                                             "stack_2_block3_output", 
                                             "stack_4_block5_output", 
                                             "stack_6_block1_output"],
-                      'efficientnetv2b5': [
+                      'efficientnetv1_b5': [
                                             "stack_2_block4_output", 
                                             "stack_4_block6_output", 
                                             "stack_6_block2_output"],
-                      'efficientnetv2b6': [
+                      'efficientnetv1_b6': [
                                             "stack_2_block5_output", 
                                             "stack_4_block7_output", 
                                             "stack_6_block2_output"],
-                      'efficientnetv2b7': [
+                      'efficientnetv1_b7': [
                                             "stack_2_block5_output", 
                                             "stack_4_block7_output", 
                                             "stack_6_block2_output"],
-                      'efficientnetv2b7x': [
+                      'efficientnetv1_b7x': [
                                             "stack_2_block6_output", 
                                             "stack_4_block9_output", 
-                                            "stack_6_block3_output"]
-                      'efficientnetlite0': [
+                                            "stack_6_block3_output"],
+                      'efficientnetv1_lite0': [
                                             "stack_2_block1_output", 
                                             "stack_4_block2_output", 
                                             "stack_6_block0_output"],
-                      'efficientnetlite1': [
+                      'efficientnetv1_lite1': [
                                             "stack_2_block2_output", 
                                             "stack_4_block3_output", 
                                             "stack_6_block0_output"],
-                      'efficientnetlite2': [
+                      'efficientnetv1_lite2': [
                                             "stack_2_block2_output", 
                                             "stack_4_block3_output", 
                                             "stack_6_block0_output"],
-                      'efficientnetlite3': [
+                      'efficientnetv1_lite3': [
                                             "stack_2_block2_output", 
                                             "stack_4_block4_output", 
                                             "stack_6_block0_output"],
-                      'efficientnetlite3x': [
+                      'efficientnetv1_lite3x': [
                                             "stack_2_block2_output", 
                                             "stack_4_block4_output", 
-                                            "stack_6_block0_output"]
-                      'efficientnetlite4': [
+                                            "stack_6_block0_output"],
+                      'efficientnetv1_lite4': [
                                             "stack_2_block3_output", 
                                             "stack_4_block5_output", 
                                             "stack_6_block0_output"],
@@ -172,7 +173,7 @@ class MaskED(tf.keras.Model):
                                 config.SEPARABLE_CONV, 
                                 activation="swish", 
                                 name="biFPN_{}_".format(id + 1))
-                fpn_features = outputs
+            fpn_features = outputs
         else:
             fpn_features = build_FPN(outputs, config.FPN_FEATURE_MAP_SIZE)
 
@@ -208,7 +209,7 @@ class MaskED(tf.keras.Model):
                                             config.SEPARABLE_CONV, 
                                             activation="swish", 
                                             name="classifier_")
-            if config.ACTIVATION == "SOFTMAX":
+            if config.ACTIVATION == "softmax":
                 num_classes = config.NUM_CLASSES+1
             else:
                 num_classes = config.NUM_CLASSES
@@ -221,6 +222,7 @@ class MaskED(tf.keras.Model):
                                         config.ACTIVATION, 
                                         name="classifier_")
             pred = {
+                    'fpn_features': fpn_features,
                     'regression': box_net,
                     'classification': class_net,
                 }
@@ -234,7 +236,6 @@ class MaskED(tf.keras.Model):
                                            outputs=fpn_features)
 
 
-        self.num_anchors = anchorobj.num_anchors
         self.priors = anchorobj.anchors
         self.rescale = layers.Rescaling(scale=1. / 255)
         self.norm = layers.Normalization(
@@ -266,6 +267,7 @@ class MaskED(tf.keras.Model):
         features = self.backbone(inputs, training=training)
         
         if not self.config.USE_FPN:
+            fpn_features = features['fpn_features']
             classification = features['classification']
             regression = features['regression']
         else:
@@ -279,6 +281,7 @@ class MaskED(tf.keras.Model):
                 pred_cls.append(cls)
                 pred_offset.append(offset)
                 
+            fpn_features = features
             classification = tf.concat(pred_cls, axis=1)
             regression = tf.concat(pred_offset, axis=1)
 
@@ -291,7 +294,7 @@ class MaskED(tf.keras.Model):
         pred.update(self.detect(pred, trad_nms=self.config.TRAD_NMS))
 
         if self.config.PREDICT_MASK:
-            mask_feats = features[:-(self.config.TOTAL_FEAT_LAYERS - \
+            mask_feats = fpn_features[:-(self.config.TOTAL_FEAT_LAYERS - \
                                      self.config.MAX_MASK_FEAT_LAYER)]
             # Use features from C3 to C5 only, as shown in Ablation study in 
             # CenterMask

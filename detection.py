@@ -12,8 +12,9 @@ class Detect(object):
 
     def __init__(self, config):
         # Parameters used in nms.
+        self.config = config
         self.nms_thresh = config.NMS_THRESH
-        if nms_thresh <= 0:
+        if self.nms_thresh <= 0:
             raise ValueError('nms_threshold must be non negative.')
         self.conf_thresh = config.CONF_THRESH
         self.max_output_size = config.MAX_OUTPUT_SIZE
@@ -44,7 +45,7 @@ class Detect(object):
         class_p = net_outs['classification']
         anchors = net_outs['priors']  # [cx, cy, w, h] format. Normalized.
 
-        if self.config.ACTIVATION == 'SOFTMAX':
+        if self.config.ACTIVATION == 'softmax':
             num_class = tf.shape(class_p)[2] - 1
             # exclude the background class
             class_p = class_p[:, :, 1:]

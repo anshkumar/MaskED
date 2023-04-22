@@ -17,7 +17,7 @@ class Config(object):
     #         resnet50
     #         efficientnetlite0, efficientnetlite1, efficientnetlite2, efficientnetlite3, efficientnetlite4
     #         swin-tiny
-    BACKBONE = "swin-tiny"
+    BACKBONE = "efficientnetv1_b0"
     BASE_MODEL_TRAINABLE = True
     FREEZE_BACKBONE_BN = False # False for bbox training. True for fine-tuning mask.
 
@@ -28,13 +28,13 @@ class Config(object):
 
     # Ratios of anchors at each cell (width/height)
     # A value of 1 represents a square anchor, and 0.5 is a wide anchor
-    ANCHOR_RATIOS =  [ [[1, 1/2, 2]] ]*5
+    ANCHOR_RATIOS = [1, 1/2, 2]
     NUM_SCALES = 3
     ANCHOR_SCALE = 4
-    ANCHOR_PER_PIX = 3
+    ANCHOR_PER_PIX = 9
 
     # Weather to use FPN or BiFPN
-    USE_FPN = True
+    USE_FPN = False
     FPN_FEATURE_MAP_SIZE = 256
 
     # BiFPN settings
@@ -102,7 +102,7 @@ class Config(object):
     
     # Allowed are : ['OHEM', 'FOCAL', 'CROSSENTROPY']
     LOSS_CLASSIFICATION = 'OHEM'
-    ACTIVATION = 'SOFTMAX' # ['SOFTMAX', 'SIGMOID']
+    ACTIVATION = 'softmax' # ['softmax', 'sigmoid']
     NEG_POS_RATIO = 3
     USE_MASK_IOU = False
 
