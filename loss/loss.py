@@ -105,7 +105,7 @@ class Loss(object):
         """
         Focal loss but using sigmoid like the original paper.
         """
-        labels = tf.one_hot(self.conf_gt, depth=self.num_classes)
+        labels = tf.one_hot(self.conf_gt, depth=self.num_classes)[:,:,1:]
         # filter out "neutral" anchors
         indices = tf.where(self.conf_gt >= 0)
         labels = tf.gather_nd(labels, indices)

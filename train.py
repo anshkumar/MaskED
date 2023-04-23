@@ -695,10 +695,8 @@ def main(argv):
     def val_step(valid_images, valid_labels):
         outputs = model([valid_images, valid_labels['boxes_norm']], 
                         training=False)
-        if config.LOSS_CLASSIFICATION == 'FOCAL':
-          num_class = config.NUM_CLASSES
-        else:
-          num_class = config.NUM_CLASSES+1 
+
+        num_class = config.NUM_CLASSES+1 
         valid_loc_loss, valid_conf_loss, valid_mask_loss, \
                   valid_mask_iou_loss = \
                   criterion(model, outputs, valid_labels, num_class)
@@ -717,10 +715,7 @@ def main(argv):
             with tf.GradientTape() as tape:
                 output = model([image, labels['boxes_norm']], training=True)
 
-                if config.LOSS_CLASSIFICATION == 'FOCAL':
-                  num_class = config.NUM_CLASSES
-                else:
-                  num_class = config.NUM_CLASSES+1 
+                num_class = config.NUM_CLASSES+1 
                 loc_loss, conf_loss, mask_loss, mask_iou_loss, \
                     = criterion(model, output, labels, num_class, image)
 
