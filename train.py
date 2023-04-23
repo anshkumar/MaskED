@@ -650,7 +650,6 @@ def main(argv):
     train_dataset = dataset_coco.prepare_dataloader(
       config, 
       tfrecord_dir=FLAGS.tfrecord_train_dir,
-      feature_map_size=model.feature_map_size,
       batch_size=global_batch_size if FLAGS.multi_gpu else config.BATCH_SIZE,
       subset='train')
     if FLAGS.multi_gpu:
@@ -662,7 +661,6 @@ def main(argv):
     valid_dataset = dataset_coco.prepare_dataloader(
       config,
       tfrecord_dir=FLAGS.tfrecord_val_dir,
-      feature_map_size=model.feature_map_size,
       batch_size=1,
       subset='val')
 
