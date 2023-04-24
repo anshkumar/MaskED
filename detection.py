@@ -98,6 +98,6 @@ class Detect(object):
         x1, x2 = utils.sanitize_coordinates(boxes[:, 1], boxes[:, 3], tf.cast(width, dtype=tf.float32), normalized=False)
         y1, y2 = utils.sanitize_coordinates(boxes[:, 0], boxes[:, 2], tf.cast(height, dtype=tf.float32), normalized=False)
 
-        boxes = tf.stack((y1, x1, y2, x2), axis=1)
+        boxes = tf.stack((y1/height, x1/width, y2/height, x2/width), axis=1)
 
         return boxes
