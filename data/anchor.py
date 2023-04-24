@@ -82,7 +82,8 @@ class Anchor(object):
             anchors_yxyx.append(anchors)
         anchors_yxyx = np.concatenate(anchors_yxyx, axis=0) #/ \
                 # [input_shape[0], input_shape[1], input_shape[0], input_shape[1]]
-
+        anchors_yxyx = tf.convert_to_tensor(anchors_yxyx, dtype=tf.float32)
+        
         return anchors_yxyx # [ymin, xmin, ymax, xmax ]
 
     def matching(self, pos_thresh, neg_thresh, gt_bbox, gt_labels, config):

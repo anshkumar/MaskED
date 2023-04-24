@@ -89,7 +89,6 @@ class Parser(object):
         boxes_norm = boxes
         boxes_abs = boxes * [self._output_size_h, self._output_size_w, 
                              self._output_size_h, self._output_size_w ]
-        boxes_abs = tf.cast(boxes_abs, tf.float32)
         
         # matching anchors
         all_offsets, conf_gt, prior_max_box, prior_max_index = \
