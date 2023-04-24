@@ -43,7 +43,7 @@ class Detect(object):
 
         box_p = net_outs['regression']
         class_p = net_outs['classification']
-        anchors = net_outs['priors']  # [cx, cy, w, h] format. Normalized.
+        anchors = net_outs['priors']  # [ymin, xmin, ymax, xmax ] format. Normalized.
 
         if self.config.ACTIVATION == 'softmax':
             num_class = tf.shape(class_p)[2] - 1
@@ -77,7 +77,7 @@ class Detect(object):
                     boxes, class_ids, class_thre = utils._traditional_nms(boxes, class_thre, score_threshold=self.conf_thresh, iou_threshold=self.nms_thresh, max_class_output_size=self.per_class_max_output_size, max_output_size=self.max_output_size)
 
                 num_detection = [tf.shape(boxes)[0]]
-                boxes = self._sanitize(boxes, width=1, height=1)
+                boxes = self._sanitize(boxes, width=self.config.IMAGE_SHAPE[1], height=self.config.IMAGE_SHAPE[0])
 
                 _ind_boxes = tf.stack((tf.tile([b], num_detection), tf.range(0, tf.shape(boxes)[0])), axis=-1) # Shape: (Number of updates, index of update)
                 detection_boxes = tf.tensor_scatter_nd_update(detection_boxes, _ind_boxes, boxes)
