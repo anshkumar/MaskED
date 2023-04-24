@@ -87,11 +87,14 @@ class Parser(object):
         masks = tf.cast(masks, tf.float32)
         
         boxes_norm = boxes
+        boxes_abs = boxes * [self._output_size_h, self._output_size_w, 
+                             self._output_size_h, self._output_size_w ]
         
         # matching anchors
         all_offsets, conf_gt, prior_max_box, prior_max_index = \
         self._anchor_instance.matching(
-            self._match_threshold, self._unmatched_threshold, boxes_norm, classes, self.config)
+            self._match_threshold, self._unmatched_threshold, boxes_abs, 
+            classes, self.config)
 
         # number of object in training sample
         num_obj = tf.size(classes)
@@ -103,6 +106,7 @@ class Parser(object):
         pad_masks = tf.zeros([num_padding, self._output_size_h, 
             self._output_size_w])
         boxes_norm = tf.concat([boxes_norm, pad_boxes], axis=0)
+        boxes_abs = tf.concat([boxes_abs, pad_boxes], axis=0)
 
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
@@ -116,6 +120,7 @@ class Parser(object):
             'prior_max_box': prior_max_box,
             'prior_max_index': prior_max_index,
             'boxes_norm': boxes_norm,
+            'boxes_abs': boxes_abs,
             'classes': classes,
             'num_obj': num_obj,
             'mask_target': masks,

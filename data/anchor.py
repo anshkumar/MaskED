@@ -15,14 +15,13 @@ class Anchor(object):
         :param scale:
         """
         self.config = config
-        self.anchors_norm = self._generate_anchors(
+        self.anchors = self._generate_anchors(
             config.IMAGE_SHAPE, 
             [config.MIN_MASK_FEAT_LAYER, config.TOTAL_FEAT_LAYERS], 
             config.ANCHOR_RATIOS,
             config.NUM_SCALES,
             config.ANCHOR_SCALE
             )
-        self.anchors = self.get_anchors()
 
     def get_feature_sizes(self, input_shape, pyramid_levels=[3, 7]):
         #https://github.com/google/automl/tree/master/efficientdet/utils.py#L509
@@ -65,7 +64,7 @@ class Anchor(object):
                                     max(pyramid_levels) + 1))
         feature_sizes = self.get_feature_sizes(input_shape, pyramid_levels)
 
-        all_anchors = []
+        anchors_yxyx = []
         for level in pyramid_levels:
             stride_hh, stride_ww = feature_sizes[0][0]/feature_sizes[level][0],\
                                    feature_sizes[0][1]/feature_sizes[level][1]
@@ -80,25 +79,11 @@ class Anchor(object):
                             [stride_hh, stride_ww, stride_hh, stride_ww], 0) + \
                       grid.astype(base_anchors.dtype)
             anchors = np.reshape(anchors, [-1, 4])
-            all_anchors.append(anchors)
-        all_anchors = np.concatenate(all_anchors, axis=0) / \
-                [input_shape[0], input_shape[1], input_shape[0], input_shape[1]]
+            anchors_yxyx.append(anchors)
+        anchors_yxyx = np.concatenate(anchors_yxyx, axis=0) #/ \
+                # [input_shape[0], input_shape[1], input_shape[0], input_shape[1]]
 
-        return all_anchors
-
-    def get_anchors(self):
-        # Convert anchors from [cx, cy, w, h] to [ymin, xmin, ymax, xmax ] 
-        # for IOU calculations
-        w = self.anchors_norm[:, 2]
-        h = self.anchors_norm[:, 3]
-        anchors_yxyx = tf.cast(tf.stack(
-            [(self.anchors_norm[:, 1] - (h / 2)), 
-            (self.anchors_norm[:, 0] - (w / 2)), 
-            (self.anchors_norm[:, 1] + (h / 2)), 
-            (self.anchors_norm[:, 0] + (w / 2))], 
-            axis=-1), tf.float32)
-
-        return anchors_yxyx
+        return anchors_yxyx # [ymin, xmin, ymax, xmax ]
 
     def matching(self, pos_thresh, neg_thresh, gt_bbox, gt_labels, config):
         # size: [num_objects, num_priors]; anchors along the row and 

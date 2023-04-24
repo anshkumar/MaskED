@@ -41,7 +41,7 @@ class Loss(object):
         # all label component
         self.gt_offset = label['all_offsets']
         self.conf_gt = label['conf_gt']
-        self.gt_bbox = label['boxes_norm']
+        self.gt_bbox = label['boxes_abs']
         self.prior_max_box = label['prior_max_box']
         self.prior_max_index = label['prior_max_index']
 
