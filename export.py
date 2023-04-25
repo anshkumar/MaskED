@@ -22,14 +22,18 @@ class Model(MaskED):
     def call(self, inputs, training=False):
         if self.config.BACKBONE == 'resnet50':
             inputs = tf.keras.applications.resnet50.preprocess_input(inputs)
-        if self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 'efficientnetlite2', 'efficientnetlite3', 'efficientnetlite4']:
+        elif self.config.BACKBONE in ['efficientnetlite0', 'efficientnetlite1', 
+                                    'efficientnetlite2', 'efficientnetlite3', 
+                                    'efficientnetlite3x', 'efficientnetlite4']:
             inputs = (inputs - 127.00) / 128.00
+        else:
+            inputs = self.rescale(inputs)
+            inputs = self.norm(inputs)
         features = self.backbone(inputs, training=False)
         if not self.config.USE_FPN:
-            classification = self.class_net(features)
-            classification = layers.Concatenate(axis=1, name='classification')(classification)
-            regression = self.box_net(features)
-            regression = layers.Concatenate(axis=1, name='regression')(regression)
+            fpn_features = features['fpn_features']
+            classification = features['classification']
+            regression = features['regression']
         else:
             # Prediction Head branch
             pred_cls = []
