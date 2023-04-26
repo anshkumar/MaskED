@@ -40,7 +40,10 @@ class PredictionModule(tf.keras.layers.Layer):
         super(PredictionModule, self).__init__()
         self.config = config
         self.num_anchors = config.ANCHOR_PER_PIX
-        self.num_class = config.NUM_CLASSES+1
+        if config.ACTIVATION == "softmax":
+            self.num_class = config.NUM_CLASSES+1
+        else:
+            self.num_class = config.NUM_CLASSES
         out_channels = config.FPN_FEATURE_MAP_SIZE
         self.Conv = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
                                            kernel_initializer=  tf.keras.initializers.RandomNormal(stddev=0.01),
