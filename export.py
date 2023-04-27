@@ -43,6 +43,7 @@ class Model(MaskED):
                 cls, offset = self.predictionHead(f_map)
                 pred_cls.append(cls)
                 pred_offset.append(offset)
+            fpn_features = features
             classification = tf.concat(pred_cls, axis=1)
             regression = tf.concat(pred_offset, axis=1)
         pred = {
@@ -52,8 +53,10 @@ class Model(MaskED):
         }
         pred.update(self.detect(pred))
         if self.config.PREDICT_MASK:
+            mask_feats = fpn_features[:-(self.config.TOTAL_FEAT_LAYERS - \
+                                     self.config.MAX_MASK_FEAT_LAYER)]
             masks = self.mask_head(pred['detection_boxes'],
-                            features[:-(self.config.TOTAL_FEAT_LAYERS-self.config.MAX_MASK_FEAT_LAYER)],
+                            mask_feats,
                             self.num_classes,
                             self.config,
                             training)
